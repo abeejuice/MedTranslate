@@ -1,0 +1,13 @@
+{
+  "name": "medtranslate",
+  "version": "1.0.0",
+  "description": "Doctor-patient language translation PWA for Indian hospitals",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'static site, no build step'",
+    "start": "netlify dev"
+  },
+  "devDependencies": {
+    "netlify-cli": "latest"
+  }
+}
