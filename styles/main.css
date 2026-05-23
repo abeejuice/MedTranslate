@@ -6,14 +6,14 @@
   --color-primary-dark: #1d4ed8;
   --color-surface: #ffffff;
   --color-background: #f8fafc;
-  --color-surface-raised: #ffffff;
+  --color-surface-raised: #ffffff;  /* reserved for future elevated surface use */
   --color-border: #e2e8f0;
   --color-text-primary: #0f172a;
   --color-text-secondary: #64748b;
   --color-text-muted: #94a3b8;
   --color-error: #ef4444;
   --color-success: #22c55e;
-  --color-warning: #f59e0b;
+  --color-warning: #f59e0b;         /* reserved for future warning states */
   --color-record: #ef4444;         /* Red — recording state */
   --color-record-light: #fef2f2;
 
@@ -85,6 +85,17 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 input, textarea { font-family: inherit; }
 a { color: inherit; text-decoration: none; }
 img, svg { display: block; }
+
+/* Focus ring — keyboard and switch access */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.form-input:focus, .form-select:focus, .custom-q-bar__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
 
 /* ─── APP SHELL ──────────────────────────────────────────── */
 #app {
@@ -237,6 +248,7 @@ img, svg { display: block; }
   color: var(--color-record);
   width: 100%;
 }
+.btn-danger:active { opacity: 0.8; transform: scale(0.98); }
 
 /* Record button — large circular */
 .btn-record {
@@ -248,6 +260,9 @@ img, svg { display: block; }
   box-shadow: var(--shadow-md);
   transition: all var(--transition-fast);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .btn-record:active { transform: scale(0.94); }
 .btn-record.recording {
@@ -270,6 +285,8 @@ img, svg { display: block; }
   font-weight: var(--font-weight-semibold);
   gap: var(--space-2);
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
 }
 .btn-play:active { background: var(--color-primary-dark); }
 .btn-play.playing { background: var(--color-primary-dark); }
@@ -414,7 +431,10 @@ img, svg { display: block; }
   width: 100%;
   outline: none;
 }
-.form-select:focus { border-color: var(--color-primary); }
+.form-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
 
 /* ─── WAVEFORM ANIMATION ─────────────────────────────────── */
 .waveform {
@@ -672,3 +692,10 @@ img, svg { display: block; }
 }
 .custom-q-bar__send:active { background: var(--color-primary-dark); transform: scale(0.94); }
 .custom-q-bar__send:disabled { opacity: 0.4; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

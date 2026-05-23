@@ -10,17 +10,42 @@ if ('serviceWorker' in navigator) {
 // Placeholder screens until Tasks 6-8 fill them in
 function placeholderScreen(title) {
   return (el) => {
-    el.innerHTML = `
-      <div class="app-header">
-        <div class="app-header__title">${title}</div>
-      </div>
-      <div class="screen-content empty-state">
-        <div class="empty-state__icon">🏗️</div>
-        <div class="empty-state__title">${title}</div>
-        <div class="empty-state__body">Coming in a future task</div>
-        <button class="btn btn-primary" style="margin-top:16px;max-width:200px" onclick="history.back()">Back</button>
-      </div>
-    `;
+    // Build DOM safely — no user data is interpolated into innerHTML
+    const header = document.createElement('div');
+    header.className = 'app-header';
+    const headerTitle = document.createElement('div');
+    headerTitle.className = 'app-header__title';
+    headerTitle.textContent = title;
+    header.appendChild(headerTitle);
+
+    const content = document.createElement('div');
+    content.className = 'screen-content empty-state';
+
+    const icon = document.createElement('div');
+    icon.className = 'empty-state__icon';
+    icon.textContent = '🏗️';
+
+    const stateTitle = document.createElement('div');
+    stateTitle.className = 'empty-state__title';
+    stateTitle.textContent = title;
+
+    const body = document.createElement('div');
+    body.className = 'empty-state__body';
+    body.textContent = 'Coming in a future task';
+
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn btn-secondary';
+    backBtn.style.cssText = 'margin-top:16px;max-width:200px';
+    backBtn.textContent = 'Back';
+    backBtn.addEventListener('click', () => history.back());
+
+    content.appendChild(icon);
+    content.appendChild(stateTitle);
+    content.appendChild(body);
+    content.appendChild(backBtn);
+
+    el.appendChild(header);
+    el.appendChild(content);
   };
 }
 
