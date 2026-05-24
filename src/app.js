@@ -1,4 +1,6 @@
 import { navigate, registerScreen } from './router.js';
+import { register as registerHome } from './screens/home.js';
+import { register as registerSessionSetup } from './screens/session-setup.js';
 
 // Register service worker
 if ('serviceWorker' in navigator) {
@@ -49,8 +51,8 @@ function placeholderScreen(title) {
   };
 }
 
-registerScreen('home', placeholderScreen('MedTranslate Home'));
-registerScreen('session-setup', placeholderScreen('Session Setup'));
+registerHome();
+registerSessionSetup();
 registerScreen('session', placeholderScreen('History Taking'));
 registerScreen('session-summary', placeholderScreen('Session Summary'));
 registerScreen('past-sessions', placeholderScreen('Past Sessions'));
