@@ -85,7 +85,7 @@ Return a JSON array with ${questions.length} elements, each with "text" and "rom
   try {
     const client = new Anthropic({ apiKey });
     claudeResponse = await client.messages.create({
-      model: "claude-haiku-4-5",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],
