@@ -1,7 +1,9 @@
-import { navigate, registerScreen } from './router.js';
+import { navigate } from './router.js';
 import { register as registerHome } from './screens/home.js';
 import { register as registerSessionSetup } from './screens/session-setup.js';
 import { register as registerSession } from './screens/session.js';
+import { register as registerSessionSummary } from './screens/session-summary.js';
+import { register as registerPastSessions } from './screens/past-sessions.js';
 
 // Register service worker
 if ('serviceWorker' in navigator) {
@@ -10,53 +12,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Placeholder screens until Tasks 6-8 fill them in
-function placeholderScreen(title) {
-  return (el) => {
-    // Build DOM safely — no user data is interpolated into innerHTML
-    const header = document.createElement('div');
-    header.className = 'app-header';
-    const headerTitle = document.createElement('div');
-    headerTitle.className = 'app-header__title';
-    headerTitle.textContent = title;
-    header.appendChild(headerTitle);
-
-    const content = document.createElement('div');
-    content.className = 'screen-content empty-state';
-
-    const icon = document.createElement('div');
-    icon.className = 'empty-state__icon';
-    icon.textContent = '🏗️';
-
-    const stateTitle = document.createElement('div');
-    stateTitle.className = 'empty-state__title';
-    stateTitle.textContent = title;
-
-    const body = document.createElement('div');
-    body.className = 'empty-state__body';
-    body.textContent = 'Coming in a future task';
-
-    const backBtn = document.createElement('button');
-    backBtn.className = 'btn btn-secondary';
-    backBtn.style.cssText = 'margin-top:16px;max-width:200px';
-    backBtn.textContent = 'Back';
-    backBtn.addEventListener('click', () => history.back());
-
-    content.appendChild(icon);
-    content.appendChild(stateTitle);
-    content.appendChild(body);
-    content.appendChild(backBtn);
-
-    el.appendChild(header);
-    el.appendChild(content);
-  };
-}
 
 registerHome();
 registerSessionSetup();
 registerSession();
-registerScreen('session-summary', placeholderScreen('Session Summary'));
-registerScreen('past-sessions', placeholderScreen('Past Sessions'));
+registerSessionSummary();
+registerPastSessions();
 
 // Boot to home screen
 navigate('home');
