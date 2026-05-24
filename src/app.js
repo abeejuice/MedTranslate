@@ -1,6 +1,7 @@
 import { navigate, registerScreen } from './router.js';
 import { register as registerHome } from './screens/home.js';
 import { register as registerSessionSetup } from './screens/session-setup.js';
+import { register as registerSession } from './screens/session.js';
 
 // Register service worker
 if ('serviceWorker' in navigator) {
@@ -53,7 +54,7 @@ function placeholderScreen(title) {
 
 registerHome();
 registerSessionSetup();
-registerScreen('session', placeholderScreen('History Taking'));
+registerSession();
 registerScreen('session-summary', placeholderScreen('Session Summary'));
 registerScreen('past-sessions', placeholderScreen('Past Sessions'));
 
