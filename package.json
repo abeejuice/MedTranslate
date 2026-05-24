@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "netlify-cli": "latest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0"
   }
 }
