@@ -13,10 +13,13 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; connect-src 'self' https://api.sarvam.ai https://stt-rt.soniox.com; script-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self' blob:;"
+    Content-Security-Policy = "default-src 'self'; connect-src 'self' https://api.sarvam.ai https://stt-rt.soniox.com https://api.soniox.com https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; media-src 'self' blob: data:;"
     Permissions-Policy = "microphone=(self), camera=(), geolocation=()"
 
 [[headers]]
   for = "/service-worker.js"
   [headers.values]
     Cache-Control = "no-cache"
+
+[functions.stt]
+  timeout = 26

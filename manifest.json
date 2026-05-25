@@ -1,13 +1,13 @@
 {
-  "name": "MedTranslate",
-  "short_name": "MedTranslate",
+  "name": "Kya? What? Entha?",
+  "short_name": "KyaWhatEntha",
   "description": "Doctor-patient language translation for Indian hospitals",
   "id": "/",
   "lang": "en",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
   "orientation": "portrait",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },

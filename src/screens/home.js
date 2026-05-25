@@ -2,31 +2,22 @@ import { registerScreen, navigate } from '../router.js';
 import { showToast } from '../toast.js';
 import { getAllSessions } from '../db.js';
 import { TEMPLATES } from '../data/templates.js';
+import { staggerCards } from '../animations.js';
 
 function formatDateTime(isoString) {
   if (!isoString) return '';
   const d = new Date(isoString);
   if (isNaN(d.getTime())) return '';
-  const day = d.getDate();
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const month = monthNames[d.getMonth()];
-  const year = d.getFullYear();
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${day} ${month} ${year}, ${hours}:${minutes}`;
-}
-
-function getTemplateForSession(session) {
-  if (!session.templateId) return null;
-  return TEMPLATES.find(t => t.id === session.templateId) || null;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d.getDate()} ${months[d.getMonth()]}, ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
 function buildSessionItem(session, navigateFn) {
-  const template = getTemplateForSession(session);
+  const template = TEMPLATES.find(t => t.id === session.templateId);
   const icon = template ? template.icon : '📋';
   const label = template ? template.label : (session.templateId || 'Session');
-  const language = session.languageLabel || session.languageCode || '';
   const patient = session.patientLabel || 'Anonymous';
+  const lang = session.languageLabel || session.languageCode || '';
   const dateStr = formatDateTime(session.startedAt);
 
   const item = document.createElement('div');
@@ -43,58 +34,97 @@ function buildSessionItem(session, navigateFn) {
 
   const title = document.createElement('div');
   title.className = 'session-item__title';
-  title.textContent = label;
+  title.textContent = patient;
 
   const meta = document.createElement('div');
   meta.className = 'session-item__meta';
-
-  const metaParts = [];
-  if (language) metaParts.push(language);
-  if (patient) metaParts.push(patient);
-  if (dateStr) metaParts.push(dateStr);
-  meta.textContent = metaParts.join(' · ');
+  const parts = [];
+  if (lang) parts.push(lang);
+  if (label) parts.push(label);
+  meta.textContent = parts.join(' · ');
 
   body.appendChild(title);
   body.appendChild(meta);
 
-  const chevron = document.createElement('div');
-  chevron.className = 'session-item__chevron';
-  chevron.setAttribute('aria-hidden', 'true');
-  chevron.textContent = '›';
+  const timestamp = document.createElement('div');
+  timestamp.className = 'session-item__timestamp';
+  timestamp.textContent = dateStr;
 
   item.appendChild(iconEl);
   item.appendChild(body);
-  item.appendChild(chevron);
+  item.appendChild(timestamp);
 
-  const handler = () => navigateFn('session-summary', { sessionId: session.id, readOnly: true });
+  const handler = () => navigateFn('session-summary', { sessionId: session.id, readOnly: true }, 'forward');
   item.addEventListener('click', handler);
-  item.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handler();
-    }
+  item.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
   });
 
   return item;
+}
+
+function makeStethoscopeSvg() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', '64');
+  svg.setAttribute('height', '64');
+  svg.setAttribute('viewBox', '0 0 64 64');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+
+  const circle = document.createElementNS(ns, 'circle');
+  circle.setAttribute('cx', '32');
+  circle.setAttribute('cy', '32');
+  circle.setAttribute('r', '28');
+  circle.setAttribute('stroke', '#2A2A2A');
+  circle.setAttribute('stroke-width', '2');
+
+  const arc = document.createElementNS(ns, 'path');
+  arc.setAttribute('d', 'M22 28 C22 20 27 16 32 16 C37 16 42 20 42 28 L42 34 C42 40 37 44 32 44');
+  arc.setAttribute('stroke', '#3A3A3A');
+  arc.setAttribute('stroke-width', '2.5');
+  arc.setAttribute('stroke-linecap', 'round');
+  arc.setAttribute('fill', 'none');
+
+  const stem = document.createElementNS(ns, 'line');
+  stem.setAttribute('x1', '32');
+  stem.setAttribute('y1', '44');
+  stem.setAttribute('x2', '32');
+  stem.setAttribute('y2', '50');
+  stem.setAttribute('stroke', '#3A3A3A');
+  stem.setAttribute('stroke-width', '2.5');
+  stem.setAttribute('stroke-linecap', 'round');
+
+  const dot = document.createElementNS(ns, 'circle');
+  dot.setAttribute('cx', '32');
+  dot.setAttribute('cy', '52');
+  dot.setAttribute('r', '2.5');
+  dot.setAttribute('fill', '#3A3A3A');
+
+  svg.appendChild(circle);
+  svg.appendChild(arc);
+  svg.appendChild(stem);
+  svg.appendChild(dot);
+  return svg;
 }
 
 function buildEmptyState() {
   const empty = document.createElement('div');
   empty.className = 'empty-state';
 
-  const icon = document.createElement('div');
-  icon.className = 'empty-state__icon';
-  icon.textContent = '🏥';
+  const iconWrap = document.createElement('div');
+  iconWrap.className = 'empty-state__icon';
+  iconWrap.appendChild(makeStethoscopeSvg());
 
   const title = document.createElement('div');
   title.className = 'empty-state__title';
-  title.textContent = 'Start your first session';
+  title.textContent = 'No sessions yet';
 
   const body = document.createElement('div');
   body.className = 'empty-state__body';
-  body.textContent = 'Tap the button above to begin taking history';
+  body.textContent = 'Tap the button above to start your first consultation';
 
-  empty.appendChild(icon);
+  empty.appendChild(iconWrap);
   empty.appendChild(title);
   empty.appendChild(body);
 
@@ -102,42 +132,54 @@ function buildEmptyState() {
 }
 
 async function mountHome(el, params, navigateFn) {
-  // ── Header ──────────────────────────────────────────────────
+  // ── Header ────────────────────────────────────────────────
   const header = document.createElement('div');
   header.className = 'app-header';
 
   const headerTitle = document.createElement('div');
   headerTitle.className = 'app-header__title';
-  headerTitle.textContent = '🩺 MedTranslate';
+  headerTitle.textContent = 'Kya? What? Entha?';
 
-  const versionBadge = document.createElement('div');
-  versionBadge.className = 'app-header__action';
-  versionBadge.style.cssText = 'pointer-events:none;color:var(--color-text-muted);font-size:var(--font-size-xs)';
-  versionBadge.textContent = 'v1.0';
+  const dot = document.createElement('span');
+  dot.className = 'pulse-dot';
+  headerTitle.appendChild(dot);
 
   header.appendChild(headerTitle);
-  header.appendChild(versionBadge);
 
-  // ── Content ─────────────────────────────────────────────────
+  // ── Content ───────────────────────────────────────────────
   const content = document.createElement('div');
   content.className = 'screen-content';
-  content.style.display = 'flex';
-  content.style.flexDirection = 'column';
 
-  // Start New Session button
+  // Hero
+  const hero = document.createElement('div');
+  hero.className = 'hero';
+
+  const tagline = document.createElement('p');
+  tagline.className = 'hero__subtitle';
+  tagline.textContent = 'Because "Ahhh" is the only language we both agree on.';
+
+  const ringWrap = document.createElement('div');
+  ringWrap.className = 'btn-ring';
+
   const startBtn = document.createElement('button');
-  startBtn.className = 'btn btn-primary';
-  startBtn.style.cssText = 'margin-bottom:var(--space-5);font-size:var(--font-size-md)';
+  startBtn.className = 'btn-start';
   startBtn.textContent = '+ Start New Session';
-  startBtn.addEventListener('click', () => navigateFn('session-setup'));
+  startBtn.addEventListener('click', () => navigateFn('session-setup', {}, 'forward'));
+  ringWrap.appendChild(startBtn);
 
-  content.appendChild(startBtn);
+  hero.appendChild(tagline);
+  hero.appendChild(ringWrap);
+  content.appendChild(hero);
 
-  // Recent Sessions heading + list container
+  // Recent sessions
+  const headingRow = document.createElement('div');
+  headingRow.className = 'section-heading-row';
+
   const heading = document.createElement('div');
   heading.className = 'section-heading';
   heading.textContent = 'Recent Sessions';
-  content.appendChild(heading);
+  headingRow.appendChild(heading);
+  content.appendChild(headingRow);
 
   const listEl = document.createElement('div');
   listEl.className = 'session-list';
@@ -147,12 +189,22 @@ async function mountHome(el, params, navigateFn) {
   try {
     const sessions = await getAllSessions();
     const recent = sessions.slice(0, 10);
+    if (sessions.length > 10) {
+      const seeAll = document.createElement('button');
+      seeAll.className = 'see-all-btn';
+      seeAll.textContent = 'See All →';
+      seeAll.addEventListener('click', () => navigateFn('past-sessions', {}, 'forward'));
+      headingRow.appendChild(seeAll);
+    }
     if (recent.length === 0) {
       listEl.appendChild(buildEmptyState());
     } else {
-      recent.forEach(session => {
-        listEl.appendChild(buildSessionItem(session, navigateFn));
+      const items = recent.map(s => {
+        const item = buildSessionItem(s, navigateFn);
+        listEl.appendChild(item);
+        return item;
       });
+      staggerCards(items);
     }
   } catch (err) {
     console.error('Failed to load sessions:', err);
@@ -160,80 +212,22 @@ async function mountHome(el, params, navigateFn) {
     listEl.appendChild(buildEmptyState());
   }
 
-  // ── Install banner (PWA) ─────────────────────────────────────
-  let installBanner = null;
-  let deferredPrompt = null;
-
-  function showInstallBanner() {
-    if (installBanner) return; // already shown
-
-    installBanner = document.createElement('div');
-    installBanner.style.cssText = [
-      'background:var(--color-primary-light)',
-      'color:var(--color-primary)',
-      'padding:var(--space-3) var(--space-4)',
-      'display:flex',
-      'align-items:center',
-      'justify-content:space-between',
-      'gap:var(--space-3)',
-      'border-top:1px solid var(--color-border)',
-      'font-size:var(--font-size-sm)',
-    ].join(';');
-
-    const bannerText = document.createElement('span');
-    bannerText.textContent = 'Add MedTranslate to your home screen';
-
-    const bannerActions = document.createElement('div');
-    bannerActions.style.cssText = 'display:flex;gap:var(--space-2);flex-shrink:0';
-
-    const installBtn = document.createElement('button');
-    installBtn.className = 'btn btn-primary';
-    installBtn.style.cssText = 'min-height:36px;padding:var(--space-2) var(--space-4);font-size:var(--font-size-sm)';
-    installBtn.textContent = 'Add';
-    installBtn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      if (outcome === 'accepted') {
-        installBanner.remove();
-        installBanner = null;
-      }
+  // Fade in then activate the chromatic ring on the wrapper
+  if (typeof gsap !== 'undefined') {
+    gsap.fromTo(ringWrap, { opacity: 0.6 }, {
+      opacity: 1,
+      duration: 0.6,
+      ease: 'power2.out',
+      delay: 0.15,
+      onComplete: () => ringWrap.classList.add('active'),
     });
-
-    const dismissBtn = document.createElement('button');
-    dismissBtn.className = 'btn btn-ghost';
-    dismissBtn.style.cssText = 'min-height:36px;padding:var(--space-2) var(--space-3);font-size:var(--font-size-sm)';
-    dismissBtn.textContent = 'Dismiss';
-    dismissBtn.addEventListener('click', () => {
-      installBanner.remove();
-      installBanner = null;
-    });
-
-    bannerActions.appendChild(installBtn);
-    bannerActions.appendChild(dismissBtn);
-    installBanner.appendChild(bannerText);
-    installBanner.appendChild(bannerActions);
-
-    el.appendChild(installBanner);
+  } else {
+    ringWrap.classList.add('active');
   }
 
-  function onBeforeInstallPrompt(e) {
-    e.preventDefault();
-    deferredPrompt = e;
-    showInstallBanner();
-  }
-
-  window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-
-  // ── Assemble screen ──────────────────────────────────────────
+  // ── Assemble ──────────────────────────────────────────────
   el.appendChild(header);
   el.appendChild(content);
-
-  // ── Cleanup ──────────────────────────────────────────────────
-  return function cleanup() {
-    window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-  };
 }
 
 export function register() {

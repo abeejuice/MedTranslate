@@ -1,15 +1,75 @@
-import Anthropic from "@anthropic-ai/sdk";
-
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_PROMPT = `You are a medical translation assistant. Translate English medical history-taking questions into the specified Indian language. Return ONLY a JSON array — no explanation, no markdown, no code blocks. Each element must have exactly two fields: "text" (the question in the target language's native script) and "romanised" (a phonetic romanisation that an English speaker could attempt to pronounce). Use simple, clear language appropriate for speaking to a patient — not clinical jargon. Maintain the question format (end with question mark).`;
+const SARVAM_TRANSLATE_URL = "https://api.sarvam.ai/translate";
+const SARVAM_TRANSLITERATE_URL = "https://api.sarvam.ai/transliterate";
+
+const LANGUAGE_MAPPING = {
+  hi: "hi-IN",
+  te: "te-IN",
+  ta: "ta-IN",
+  ml: "ml-IN",
+  bn: "bn-IN",
+  mr: "mr-IN",
+  ne: "ne-NP",
+};
+
+function getSarvamLangCode(code) {
+  return LANGUAGE_MAPPING[code] || (code.includes("-") ? code : `${code}-IN`);
+}
+
+async function translateToNative(text, targetLang, apiKey) {
+  const sarvamLang = getSarvamLangCode(targetLang);
+  const res = await fetch(SARVAM_TRANSLATE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-subscription-key": apiKey,
+    },
+    body: JSON.stringify({
+      input: text,
+      source_language_code: "en-IN",
+      target_language_code: sarvamLang,
+      output_script: "fully-native",
+      model: "mayura:v1",
+      mode: "formal",
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Sarvam translate failed (${res.status}): ${err}`);
+  }
+  const data = await res.json();
+  return data.translated_text ?? "";
+}
+
+async function transliterateToRoman(nativeText, sourceLang, apiKey) {
+  const sarvamLang = getSarvamLangCode(sourceLang);
+  const res = await fetch(SARVAM_TRANSLITERATE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-subscription-key": apiKey,
+    },
+    body: JSON.stringify({
+      input: nativeText,
+      source_language_code: sarvamLang,
+      target_language_code: "en-IN",
+      spoken_form: true,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Sarvam transliterate failed (${res.status}): ${err}`);
+  }
+  const data = await res.json();
+  return data.transliterated_text ?? "";
+}
 
 export default async function handler(req) {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: CORS_HEADERS });
   }
@@ -21,7 +81,7 @@ export default async function handler(req) {
     });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.SARVAM_API_KEY;
   if (!apiKey) {
     return new Response(
       JSON.stringify({ error: "Translation service not configured" }),
@@ -42,7 +102,7 @@ export default async function handler(req) {
     });
   }
 
-  const { questions, targetLang, targetLangLabel } = body;
+  const { questions, targetLang } = body;
 
   if (!questions || !targetLang) {
     return new Response(
@@ -74,28 +134,15 @@ export default async function handler(req) {
     );
   }
 
-  const langLabel = targetLangLabel || targetLang;
-  const userMessage = `Translate these medical questions into ${langLabel} (${targetLang}):
-
-${JSON.stringify(questions, null, 2)}
-
-Return a JSON array with ${questions.length} elements, each with "text" and "romanised" fields.`;
-
-  let claudeResponse;
+  let nativeTexts;
   try {
-    const client = new Anthropic({ apiKey });
-    claudeResponse = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userMessage }],
-    });
+    // Round 1: translate all questions to native script in parallel
+    nativeTexts = await Promise.all(
+      questions.map((q) => translateToNative(q, targetLang, apiKey))
+    );
   } catch (err) {
     return new Response(
-      JSON.stringify({
-        error: "Translation request failed",
-        details: err.message,
-      }),
+      JSON.stringify({ error: "Translation failed", details: err.message }),
       {
         status: 502,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
@@ -103,42 +150,22 @@ Return a JSON array with ${questions.length} elements, each with "text" and "rom
     );
   }
 
-  const rawText = claudeResponse.content?.[0]?.text ?? "";
-
-  let translations;
+  let romanisedTexts;
   try {
-    // Strip any accidental markdown code fences if Claude wraps anyway
-    const cleaned = rawText
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-    translations = JSON.parse(cleaned);
-  } catch {
-    return new Response(
-      JSON.stringify({
-        error: "Translation parsing failed",
-        details: "Claude returned non-JSON response",
-        raw: rawText.slice(0, 500),
-      }),
-      {
-        status: 500,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
+    // Round 2: transliterate all native results to roman in parallel
+    romanisedTexts = await Promise.all(
+      nativeTexts.map((t) => transliterateToRoman(t, targetLang, apiKey))
     );
+  } catch (err) {
+    // Transliteration failure is non-fatal — fall back to empty strings
+    romanisedTexts = nativeTexts.map(() => "");
   }
 
-  if (!Array.isArray(translations)) {
-    return new Response(
-      JSON.stringify({
-        error: "Translation parsing failed",
-        details: "Expected a JSON array",
-      }),
-      {
-        status: 500,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
-  }
+  const translations = nativeTexts.map((text, i) => ({
+    text,                   // Backward compatibility (if any API caller expects 'text')
+    native: text,           // Maps directly to c.updateTranslation(..., t.native) in session.js
+    romanised: romanisedTexts[i] ?? "",
+  }));
 
   return new Response(JSON.stringify({ translations }), {
     status: 200,

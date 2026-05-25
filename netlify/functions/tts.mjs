@@ -61,7 +61,7 @@ export default async function handler(req) {
       body: JSON.stringify({
         inputs: [text],
         target_language_code: languageCode,
-        speaker: "meera",
+        speaker: "anushka",
         model: "bulbul:v2",
         enable_preprocessing: true,
       }),

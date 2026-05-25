@@ -6,40 +6,121 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-/**
- * Build a multipart/form-data body manually from fields and a file buffer.
- * Returns { body: Buffer, boundary: string }
- */
-function buildMultipart(fields, fileField) {
-  const boundary = "----MedTranslateBoundary" + Date.now().toString(16);
-  const parts = [];
+const SONIOX_BASE = "https://api.soniox.com/v1";
+const STT_MODEL = "stt-async-v3";
+const POLL_INTERVAL_MS = 1500;
+const MAX_POLLS = 15; // 15 × 1.5s = 22.5s max wait
 
-  for (const [name, value] of Object.entries(fields)) {
-    parts.push(
-      `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`
-    );
-  }
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
-  // File part
-  const { name, buffer, mimeType, filename } = fileField;
+async function uploadFile(audioBuffer, mimeType, apiKey) {
+  const ext = mimeType.includes("wav") ? "wav" : "webm";
+  const filename = `audio.${ext}`;
+  const boundary = "----SonioxUpload" + Date.now().toString(16);
+
   const fileHeader =
     `--${boundary}\r\n` +
-    `Content-Disposition: form-data; name="${name}"; filename="${filename}"\r\n` +
+    `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
     `Content-Type: ${mimeType}\r\n\r\n`;
 
-  parts.push(fileHeader);
+  const body = Buffer.concat([
+    Buffer.from(fileHeader, "utf-8"),
+    audioBuffer,
+    Buffer.from(`\r\n--${boundary}--\r\n`, "utf-8"),
+  ]);
 
-  const textParts = Buffer.concat(parts.map((p) => Buffer.from(p, "utf-8")));
-  const closing = Buffer.from(`\r\n--${boundary}--\r\n`, "utf-8");
+  const res = await fetch(`${SONIOX_BASE}/files`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
+    },
+    body,
+  });
 
-  return {
-    body: Buffer.concat([textParts, buffer, closing]),
-    boundary,
-  };
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`File upload failed (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return data.id;
+}
+
+async function createTranscription(fileId, languageCode, apiKey) {
+  const res = await fetch(`${SONIOX_BASE}/transcriptions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: STT_MODEL,
+      file_id: fileId,
+      language_hints: [languageCode],
+      translation: { type: "one_way", target_language: "en" },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Transcription create failed (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return data.id;
+}
+
+async function pollUntilComplete(transcriptionId, apiKey) {
+  for (let i = 0; i < MAX_POLLS; i++) {
+    await sleep(POLL_INTERVAL_MS);
+    const res = await fetch(`${SONIOX_BASE}/transcriptions/${transcriptionId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => res.statusText);
+      throw new Error(`Poll failed (${res.status}): ${err}`);
+    }
+
+    const data = await res.json();
+    if (data.status === "completed") return;
+    if (data.status === "error") {
+      throw new Error(`Transcription failed: ${data.error_message ?? "unknown error"}`);
+    }
+  }
+  throw new Error("Transcription timed out after polling");
+}
+
+async function getTranscript(transcriptionId, apiKey) {
+  const res = await fetch(`${SONIOX_BASE}/transcriptions/${transcriptionId}/transcript`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Get transcript failed (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  // tokens may have translated text; collect it if present
+  const originalTokens = (data.tokens ?? []).filter(t => !t.is_audio_event);
+  const original = originalTokens.map(t => t.text).join("").trim() || data.text || "";
+
+  // Build English translation from token translations if available,
+  // otherwise fall back to full text (Soniox may return translated text as the primary text
+  // when translation is requested)
+  const hasTokenTranslations = originalTokens.some(t => t.translated_text);
+  const english = hasTokenTranslations
+    ? originalTokens.map(t => t.translated_text || t.text).join("").trim()
+    : data.text || "";
+
+  return { original, english };
 }
 
 export default async function handler(req) {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: CORS_HEADERS });
   }
@@ -55,10 +136,7 @@ export default async function handler(req) {
   if (!apiKey) {
     return new Response(
       JSON.stringify({ error: "STT service not configured" }),
-      {
-        status: 500,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
     );
   }
 
@@ -77,10 +155,7 @@ export default async function handler(req) {
   if (!audioBase64 || !languageCode) {
     return new Response(
       JSON.stringify({ error: "audioBase64 and languageCode are required" }),
-      {
-        status: 400,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
+      { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
     );
   }
 
@@ -88,93 +163,35 @@ export default async function handler(req) {
   try {
     audioBuffer = Buffer.from(audioBase64, "base64");
   } catch {
-    return new Response(
-      JSON.stringify({ error: "Invalid base64 audio data" }),
-      {
-        status: 400,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ error: "Invalid base64 audio data" }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
   }
 
-  // Determine file extension from mimeType
-  const ext = mimeType.includes("wav") ? "wav" : "webm";
-  const filename = `audio.${ext}`;
-
-  const { body: multipartBody, boundary } = buildMultipart(
-    {
-      model: "stt-rt-v3",
-      language_hints: languageCode,
-      translation_target_language: "en",
-    },
-    {
-      name: "file",
-      buffer: audioBuffer,
-      mimeType,
-      filename,
-    }
-  );
-
-  let sionoxResponse;
   try {
-    sionoxResponse = await fetch("https://api.soniox.com/v1/transcribe", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": `multipart/form-data; boundary=${boundary}`,
-      },
-      body: multipartBody,
-    });
+    // Step 1: upload audio file
+    const fileId = await uploadFile(audioBuffer, mimeType, apiKey);
+
+    // Step 2: create async transcription job
+    const transcriptionId = await createTranscription(fileId, languageCode, apiKey);
+
+    // Step 3: poll until complete
+    await pollUntilComplete(transcriptionId, apiKey);
+
+    // Step 4: fetch transcript
+    const { original, english } = await getTranscript(transcriptionId, apiKey);
+
+    return new Response(
+      JSON.stringify({ english, original }),
+      { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+    );
   } catch (err) {
     return new Response(
-      JSON.stringify({ error: "STT request failed", details: err.message }),
-      {
-        status: 502,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: "STT failed", details: err.message }),
+      { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
     );
   }
-
-  if (!sionoxResponse.ok) {
-    let details = sionoxResponse.statusText;
-    try {
-      const errJson = await sionoxResponse.json();
-      details = JSON.stringify(errJson);
-    } catch {
-      // ignore
-    }
-    return new Response(
-      JSON.stringify({ error: "STT failed", details }),
-      {
-        status: sionoxResponse.status,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
-  }
-
-  let sionoxData;
-  try {
-    sionoxData = await sionoxResponse.json();
-  } catch {
-    return new Response(
-      JSON.stringify({ error: "STT failed", details: "Invalid response from STT service" }),
-      {
-        status: 502,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
-  }
-
-  return new Response(
-    JSON.stringify({
-      english: sionoxData.translation ?? sionoxData.text ?? "",
-      original: sionoxData.text ?? "",
-    }),
-    {
-      status: 200,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-    }
-  );
 }
 
 export const config = {

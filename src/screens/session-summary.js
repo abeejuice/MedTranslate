@@ -34,6 +34,55 @@ function clearNode(node) {
   while (node.firstChild) node.removeChild(node.firstChild);
 }
 
+// ── Checkmark SVG ─────────────────────────────────────────────────────────────
+
+function makeCheckmarkSvg() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', '80');
+  svg.setAttribute('height', '80');
+  svg.setAttribute('viewBox', '0 0 80 80');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+
+  const circle = document.createElementNS(ns, 'circle');
+  circle.setAttribute('cx', '40');
+  circle.setAttribute('cy', '40');
+  circle.setAttribute('r', '34');
+  circle.setAttribute('stroke', '#F97316');
+  circle.setAttribute('stroke-width', '3');
+  circle.setAttribute('stroke-linecap', 'round');
+
+  const tick = document.createElementNS(ns, 'path');
+  tick.setAttribute('d', 'M24 40 L35 52 L56 28');
+  tick.setAttribute('stroke', '#F97316');
+  tick.setAttribute('stroke-width', '3.5');
+  tick.setAttribute('stroke-linecap', 'round');
+  tick.setAttribute('stroke-linejoin', 'round');
+  tick.setAttribute('fill', 'none');
+
+  svg.appendChild(circle);
+  svg.appendChild(tick);
+  return { svg, circle, tick };
+}
+
+function animateCheckmark(circle, tick) {
+  if (typeof gsap === 'undefined') return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const circleLen = 2 * Math.PI * 34;
+  circle.style.strokeDasharray = circleLen;
+  circle.style.strokeDashoffset = circleLen;
+
+  const tickLen = tick.getTotalLength ? tick.getTotalLength() : 60;
+  tick.style.strokeDasharray = tickLen;
+  tick.style.strokeDashoffset = tickLen;
+
+  const tl = gsap.timeline({ delay: 0.1 });
+  tl.to(circle, { strokeDashoffset: 0, duration: 0.6, ease: 'power2.out' })
+    .to(tick, { strokeDashoffset: 0, duration: 0.4, ease: 'power2.out' }, '-=0.1');
+}
+
 // ── Export helpers ────────────────────────────────────────────────────────────
 
 function exportAsPDF(session, formattedDate, formattedDuration) {
@@ -58,7 +107,7 @@ function exportAsPDF(session, formattedDate, formattedDuration) {
   const qaLog = session.qaLog || [];
   qaLog.forEach((qa, i) => {
     const qLines = doc.splitTextToSize(`Q${i + 1}: ${qa.questionEnglish || ''}`, 170);
-    const aLines = doc.splitTextToSize(`A: ${qa.answerEnglish || qa.answerTranscript || ''}`, 170);
+    const aLines = doc.splitTextToSize(`A: ${qa.answerEnglish || qa.answerOriginal || qa.answerTranscript || ''}`, 170);
     const blockH = (qLines.length + aLines.length) * 6 + 6;
     if (y + blockH > 270) { doc.addPage(); y = 20; }
     doc.setFont(undefined, 'bold');
@@ -74,7 +123,7 @@ function exportAsPDF(session, formattedDate, formattedDuration) {
 function exportAsText(session, formattedDate, formattedDuration) {
   const lines = [
     'MedTranslate Session Transcript',
-    '================================',
+    '============================',
     `Patient: ${session.patientLabel || 'Unknown'}`,
     `Chief Complaint: ${session.templateLabel || ''}`,
     `Language: ${session.languageLabel || ''}`,
@@ -86,7 +135,7 @@ function exportAsText(session, formattedDate, formattedDuration) {
   const qaLog = session.qaLog || [];
   qaLog.forEach((qa, i) => {
     lines.push(`Q${i + 1}: ${qa.questionEnglish || ''}`);
-    lines.push(`A${i + 1}: ${qa.answerEnglish || qa.answerTranscript || ''}`);
+    lines.push(`A${i + 1}: ${qa.answerEnglish || qa.answerOriginal || qa.answerTranscript || ''}`);
     lines.push('');
   });
 
@@ -121,93 +170,89 @@ function mount(el, params) {
   headerTitle.className = 'app-header__title';
   headerTitle.textContent = 'Session Summary';
 
-  const exportBtn = document.createElement('button');
-  exportBtn.className = 'app-header__action';
-  exportBtn.textContent = 'Export';
-  exportBtn.setAttribute('aria-label', 'Export session as PDF');
-
   header.appendChild(backBtn);
   header.appendChild(headerTitle);
-  header.appendChild(exportBtn);
   el.appendChild(header);
 
-  // ── Content placeholder (spinner while loading) ────────────────────────
+  // ── Content ───────────────────────────────────────────────────────────────
   const content = document.createElement('div');
   content.className = 'screen-content';
+
   const spinner = document.createElement('div');
   spinner.className = 'spinner';
   content.appendChild(spinner);
   el.appendChild(content);
 
-  // ── Async load & render ───────────────────────────────────────────────────
+  // ── Load & render ─────────────────────────────────────────────────────────
   getSession(sessionId).then(session => {
-    if (!session) {
-      showToast('Session not found', 'error');
-      history.back();
-      return;
-    }
+    if (!session) { showToast('Session not found', 'error'); history.back(); return; }
 
     const formattedDate = formatDate(session.startedAt);
     const formattedDuration = formatDuration(session.durationSeconds);
     const qaLog = session.qaLog || [];
     const templateIcon = getTemplateIcon(session.templateId);
 
-    // Wire export header button → export as PDF
-    exportBtn.addEventListener('click', () => {
-      exportAsPDF(session, formattedDate, formattedDuration);
-    });
-
-    // Clear spinner, build content
     clearNode(content);
 
-    // Summary header card
-    const summaryHeader = document.createElement('div');
-    summaryHeader.className = 'summary-header';
+    // Checkmark hero
+    if (!readOnly) {
+      const checkWrap = document.createElement('div');
+      checkWrap.className = 'summary-checkmark';
+      const { svg, circle, tick } = makeCheckmarkSvg();
+      checkWrap.appendChild(svg);
+      content.appendChild(checkWrap);
+      requestAnimationFrame(() => animateCheckmark(circle, tick));
+    }
+
+    // Metadata card
+    const metaCard = document.createElement('div');
+    metaCard.className = 'summary-meta-card';
 
     const patientEl = document.createElement('div');
-    patientEl.className = 'summary-header__patient';
+    patientEl.className = 'summary-meta-card__patient';
     patientEl.textContent = session.patientLabel || 'Patient';
-    summaryHeader.appendChild(patientEl);
 
-    const metaRow = document.createElement('div');
-    metaRow.className = 'summary-header__meta';
+    const tagsRow = document.createElement('div');
+    tagsRow.className = 'summary-meta-card__row';
 
-    const tagComplaint = document.createElement('span');
-    tagComplaint.className = 'summary-header__tag';
-    tagComplaint.textContent = `${templateIcon} ${session.templateLabel || ''}`;
+    const makeTag = text => {
+      const tag = document.createElement('span');
+      tag.className = 'summary-tag';
+      tag.textContent = text;
+      return tag;
+    };
 
-    const tagLang = document.createElement('span');
-    tagLang.className = 'summary-header__tag';
-    tagLang.textContent = `🇮🇳 ${session.languageLabel || ''}`;
-
-    metaRow.appendChild(tagComplaint);
-    metaRow.appendChild(tagLang);
-    summaryHeader.appendChild(metaRow);
-
-    const statsRow = document.createElement('div');
-    statsRow.className = 'summary-header__meta';
-    statsRow.textContent = `⏱ ${formattedDuration}  ·  ${qaLog.length} question${qaLog.length !== 1 ? 's' : ''}`;
-    summaryHeader.appendChild(statsRow);
+    tagsRow.appendChild(makeTag(`${templateIcon} ${session.templateLabel || ''}`));
+    tagsRow.appendChild(makeTag(session.languageLabel || ''));
+    tagsRow.appendChild(makeTag(`⏱ ${formattedDuration}`));
+    tagsRow.appendChild(makeTag(`${qaLog.length} Q`));
 
     const dateRow = document.createElement('div');
-    dateRow.className = 'summary-header__meta';
-    dateRow.textContent = `📅 ${formattedDate}`;
-    summaryHeader.appendChild(dateRow);
+    dateRow.style.cssText = 'font-size:12px;color:var(--color-text-3);margin-top:var(--space-2)';
+    dateRow.textContent = formattedDate;
 
-    content.appendChild(summaryHeader);
+    metaCard.appendChild(patientEl);
+    metaCard.appendChild(tagsRow);
+    metaCard.appendChild(dateRow);
+    content.appendChild(metaCard);
 
-    // Section heading
-    const sectionHeading = document.createElement('div');
-    sectionHeading.className = 'section-heading';
-    sectionHeading.textContent = 'TRANSCRIPT';
-    content.appendChild(sectionHeading);
+    // Transcript heading
+    if (qaLog.length > 0) {
+      const sectionHead = document.createElement('div');
+      sectionHead.className = 'section-heading';
+      sectionHead.textContent = 'TRANSCRIPT';
+      content.appendChild(sectionHead);
+    }
 
     // Q&A items
     if (qaLog.length === 0) {
       const emptyMsg = document.createElement('div');
       emptyMsg.className = 'empty-state';
-      emptyMsg.style.padding = '24px 16px';
-      emptyMsg.textContent = 'No questions were recorded in this session.';
+      emptyMsg.style.padding = '24px 0';
+      const emptyText = document.createElement('div');
+      emptyText.className = 'empty-state__body';
+      emptyText.textContent = 'No questions were recorded in this session.';
+      emptyMsg.appendChild(emptyText);
       content.appendChild(emptyMsg);
     } else {
       qaLog.forEach((qa) => {
@@ -217,11 +262,12 @@ function mount(el, params) {
         const questionEl = document.createElement('div');
         questionEl.className = 'qa-item__question';
         questionEl.textContent = qa.questionEnglish || '';
-        item.appendChild(questionEl);
 
         const answerEl = document.createElement('div');
         answerEl.className = 'qa-item__answer';
-        answerEl.textContent = qa.answerEnglish || qa.answerTranscript || '';
+        answerEl.textContent = qa.answerEnglish || qa.answerOriginal || qa.answerTranscript || '';
+
+        item.appendChild(questionEl);
         item.appendChild(answerEl);
 
         if (qa.isCustom) {
@@ -231,50 +277,40 @@ function mount(el, params) {
           item.appendChild(badge);
         }
 
-        const divider = document.createElement('div');
-        divider.className = 'divider';
-        item.appendChild(divider);
-
         content.appendChild(item);
       });
     }
 
     // ── Footer ───────────────────────────────────────────────────────────────
-    const showFooter = !readOnly || qaLog.length > 0;
-    if (showFooter) {
-      const footer = document.createElement('div');
-      footer.className = 'screen-footer';
+    const footer = document.createElement('div');
+    footer.className = 'screen-footer';
 
-      if (qaLog.length > 0) {
-        const exportRow = document.createElement('div');
-        exportRow.style.cssText = 'display:flex;gap:8px;width:100%;';
+    const exportRow = document.createElement('div');
+    exportRow.className = 'export-row';
 
-        const pdfBtn = document.createElement('button');
-        pdfBtn.className = 'btn btn-secondary';
-        pdfBtn.style.flex = '1';
-        pdfBtn.textContent = 'Export PDF';
-        pdfBtn.addEventListener('click', () => exportAsPDF(session, formattedDate, formattedDuration));
+    const pdfBtn = document.createElement('button');
+    pdfBtn.className = 'btn btn-primary';
+    pdfBtn.textContent = 'Export PDF';
+    pdfBtn.addEventListener('click', () => exportAsPDF(session, formattedDate, formattedDuration));
 
-        const txtBtn = document.createElement('button');
-        txtBtn.className = 'btn btn-secondary';
-        txtBtn.style.flex = '1';
-        txtBtn.textContent = 'Export Text';
-        txtBtn.addEventListener('click', () => exportAsText(session, formattedDate, formattedDuration));
+    const txtBtn = document.createElement('button');
+    txtBtn.className = 'btn btn-secondary';
+    txtBtn.textContent = 'Export Text';
+    txtBtn.addEventListener('click', () => exportAsText(session, formattedDate, formattedDuration));
 
-        exportRow.appendChild(pdfBtn);
-        exportRow.appendChild(txtBtn);
-        footer.appendChild(exportRow);
-      }
+    exportRow.appendChild(pdfBtn);
+    exportRow.appendChild(txtBtn);
+    footer.appendChild(exportRow);
 
-      if (!readOnly) {
-        const newSessionBtn = document.createElement('button');
-        newSessionBtn.className = 'btn btn-primary';
-        newSessionBtn.style.width = '100%';
-        newSessionBtn.textContent = 'Start New Session';
-        newSessionBtn.addEventListener('click', () => navigate('home'));
-        footer.appendChild(newSessionBtn);
-      }
+    if (!readOnly) {
+      const newSessionBtn = document.createElement('button');
+      newSessionBtn.className = 'btn btn-ghost';
+      newSessionBtn.textContent = 'Back to Home';
+      newSessionBtn.addEventListener('click', () => navigate('home'));
+      footer.appendChild(newSessionBtn);
+    }
 
+    if (footer.children.length > 0) {
       el.appendChild(footer);
     }
   }).catch(err => {
