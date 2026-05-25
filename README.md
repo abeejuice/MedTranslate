@@ -8,7 +8,6 @@
 ![Netlify](https://img.shields.io/badge/deployed-Netlify-00C7B7?style=flat-square)
 ![Sarvam AI](https://img.shields.io/badge/TTS%20%2F%20translate-Sarvam%20AI-4F46E5?style=flat-square)
 ![Soniox](https://img.shields.io/badge/STT-Soniox-22C55E?style=flat-square)
-![Claude](https://img.shields.io/badge/LLM-Claude%20Haiku-F59E0B?style=flat-square)
 
 ---
 
@@ -72,11 +71,9 @@ Medical student assigned to a patient who speaks only Malayalam. Uses the app in
        /api/translate  /api/tts     /api/stt
        Sarvam Mayura   Sarvam       Soniox STT
        v1 + Sarvam     Bulbul       stt-async-v3
-       transliterate   (base64      (async poll)
-                        WAV)            │
-                                        ▼
-                                 Claude Haiku
-                                 (en translation)
+       transliterate   (base64      (async poll +
+                        WAV)        built-in en
+                                    translation)
 ```
 
 ### Frontend
@@ -111,10 +108,10 @@ Takes native-language text + Sarvam language code. Calls Sarvam Bulbul TTS. Retu
 **`/api/stt`** (`netlify/functions/stt.mjs`)
 Takes base64 audio blob + MIME type. Flow:
 1. Upload audio to Soniox (`/files`)
-2. Submit transcription job (`/speech-to-text/async`)
+2. Submit transcription job with `translation: { type: "one_way", target_language: "en" }`
 3. Poll until complete (max 15 × 1.5 s = 22.5 s)
-4. Send transcript to Claude Haiku for English translation
-5. Return `{ original, english }`
+4. Fetch transcript — Soniox returns native tokens with `translated_text` per token
+5. Return `{ original (native language), english (Soniox built-in translation) }`
 
 ### Medical Templates
 
@@ -174,7 +171,6 @@ Bump `CACHE_NAME` in `service-worker.js` any time a static asset changes. The ac
 | Translation cache key | `translations_v2:` | v2 after template schema refactor — v1 keys silently ignored |
 | Sarvam translate model | `mayura:v1` | `mode: "formal"` — casual mode gives worse clinical phrasing |
 | Soniox STT model | `stt-async-v3` | Async required; sync model times out on mobile audio lengths |
-| LLM | `claude-haiku-4-5-20251001` | Date-versioned ID, not `claude-haiku-latest` — avoids silent model swaps in production |
 
 ---
 
@@ -225,7 +221,7 @@ cd MedTranslate
 
 # Environment
 cp .env.example .env
-# Fill in SARVAM_API_KEY, SONIOX_API_KEY, ANTHROPIC_API_KEY
+# Fill in SARVAM_API_KEY and SONIOX_API_KEY
 
 # Install Netlify CLI
 npm install
@@ -241,7 +237,6 @@ npm run dev
 |----------|----------|---------|
 | `SARVAM_API_KEY` | sarvam.ai | `translate.mjs`, `tts.mjs` |
 | `SONIOX_API_KEY` | soniox.com | `stt.mjs` |
-| `ANTHROPIC_API_KEY` | console.anthropic.com | `stt.mjs` (answer translation) |
 
 ---
 
@@ -284,7 +279,7 @@ Netlify detects `netlify/functions/` automatically. The PWA manifest and service
     └── functions/
         ├── translate.mjs       # Sarvam translate + transliterate
         ├── tts.mjs             # Sarvam Bulbul TTS
-        └── stt.mjs             # Soniox STT + Claude translation
+        └── stt.mjs             # Soniox STT with built-in en translation
 ```
 
 ---
