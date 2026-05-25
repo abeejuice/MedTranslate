@@ -695,55 +695,40 @@ html, body {
   padding: 0 var(--space-4) var(--space-3);
 }
 
-/* ─── Orb — CSS glass ball ──────────────────────────────────────────────── */
-.orb-container {
-  width: 120px;
-  height: 120px;
+/* ─── Orb — blob fluid sphere ───────────────────────────────────────────── */
+.orb-wrapper {
+  width: 140px;
+  height: 140px;
   margin: var(--space-4) auto;
   cursor: pointer;
+  position: relative;
   opacity: 0;
-  transform: scale(0.4);
-  display: none;
 }
 
-.orb-container.visible {
-  display: block;
-}
-
-.orb-ball {
-  width: 120px;
-  height: 120px;
+.orb-mask {
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
+  overflow: hidden;
+  position: relative;
   box-shadow:
-    inset 0 0 28px rgba(255, 255, 255, 0.95),
-    inset 8px 0 40px #F97316,
-    inset -8px 0 40px #FCD34D,
-    inset 8px 0 140px #F97316,
-    inset -8px 0 140px #FCD34D,
-    0 0 24px rgba(255, 255, 255, 0.15),
-    -5px 0 30px #F97316,
-    5px 0 30px #FCD34D;
+    inset 0 0 24px rgba(255, 255, 255, 0.12),
+    0 0 32px rgba(249, 115, 22, 0.25);
 }
 
-/* Speaking: slow breathe */
-.orb-container.speaking .orb-ball {
-  animation: orb-breathe 2s ease-in-out infinite;
+.orb-blob {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  filter: blur(18px);
+  will-change: transform;
 }
 
-/* Recording: fast pulse */
-.orb-container.recording .orb-ball {
-  animation: orb-record 0.45s ease-in-out infinite;
-}
-
-@keyframes orb-breathe {
-  0%, 100% { transform: scale(1);    filter: hue-rotate(0deg)  brightness(1); }
-  50%       { transform: scale(1.12); filter: hue-rotate(15deg) brightness(1.2); }
-}
-
-@keyframes orb-record {
-  0%, 100% { transform: scale(1);    filter: brightness(1); }
-  50%       { transform: scale(1.22); filter: brightness(1.5) hue-rotate(25deg); }
-}
+.orb-blob--1 { background: #F97316; top:  5px; left:  5px; }
+.orb-blob--2 { background: #FCD34D; bottom: 10px; right: 10px; }
+.orb-blob--3 { background: #EA580C; top: 30px; right:  5px; }
+.orb-blob--4 { background: #FDE68A; bottom:  5px; left: 15px; }
 
 /* ─── Record Section ───────────────────────────────────────────────────── */
 .question-card__record-section {

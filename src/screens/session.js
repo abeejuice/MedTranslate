@@ -28,13 +28,17 @@ function clearChildren(node) {
 }
 
 function makeOrbEl() {
-  const container = document.createElement('div');
-  container.className = 'orb-container';
-
-  const ball = document.createElement('div');
-  ball.className = 'orb-ball';
-  container.appendChild(ball);
-  return container;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'orb-wrapper';
+  const mask = document.createElement('div');
+  mask.className = 'orb-mask';
+  for (let i = 1; i <= 4; i++) {
+    const blob = document.createElement('div');
+    blob.className = `orb-blob orb-blob--${i}`;
+    mask.appendChild(blob);
+  }
+  wrapper.appendChild(mask);
+  return wrapper;
 }
 
 // ── Card builder ─────────────────────────────────────────────────────────────
@@ -167,6 +171,7 @@ function buildQuestionCard(q, allCards, onPlayClick, onRecordClick) {
       if (c.card.classList.contains('expanded')) {
         c.card.classList.remove('expanded');
         expandCard(c.expandedContent, false);
+        if (c.orbEl) animateOrb(c.orbEl, 'destroy');
         if (typeof gsap !== 'undefined') {
           gsap.to(c.chevronEl, { rotation: 0, duration: 0.2, ease: 'power2.out' });
         }
@@ -176,12 +181,14 @@ function buildQuestionCard(q, allCards, onPlayClick, onRecordClick) {
     if (isExpanded) {
       card.classList.remove('expanded');
       expandCard(expandedContent, false);
+      animateOrb(orbEl, 'destroy');
       if (typeof gsap !== 'undefined') {
         gsap.to(chevronEl, { rotation: 0, duration: 0.2, ease: 'power2.out' });
       }
     } else {
       card.classList.add('expanded');
       expandCard(expandedContent, true);
+      animateOrb(orbEl, 'idle');
       if (typeof gsap !== 'undefined') {
         gsap.to(chevronEl, { rotation: 90, duration: 0.2, ease: 'power2.out' });
       }
@@ -228,7 +235,7 @@ function buildQuestionCard(q, allCards, onPlayClick, onRecordClick) {
     }
   }
 
-  return { card, expandedContent, chevronEl, updateTranslation };
+  return { card, expandedContent, chevronEl, orbEl, updateTranslation };
 }
 
 // ── Mount ─────────────────────────────────────────────────────────────────────
