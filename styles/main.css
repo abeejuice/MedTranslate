@@ -713,7 +713,22 @@ html, body {
   position: relative;
   box-shadow:
     inset 0 0 24px rgba(255, 255, 255, 0.12),
-    0 0 32px rgba(249, 115, 22, 0.25);
+    0 0 40px rgba(255, 106, 0, 0.4);
+}
+
+.orb-mask::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 30% 25%,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 10;
 }
 
 .orb-blob {
@@ -725,10 +740,10 @@ html, body {
   will-change: transform;
 }
 
-.orb-blob--1 { background: #F97316; top:  5px; left:  5px; }
-.orb-blob--2 { background: #FCD34D; bottom: 10px; right: 10px; }
-.orb-blob--3 { background: #EA580C; top: 30px; right:  5px; }
-.orb-blob--4 { background: #FDE68A; bottom:  5px; left: 15px; }
+.orb-blob--1 { background: #FF6A00; top:  5px; left:  5px; }
+.orb-blob--2 { background: #FFD000; bottom: 10px; right: 10px; }
+.orb-blob--3 { background: #FF4500; top: 30px; right:  5px; }
+.orb-blob--4 { background: #FFE55C; bottom:  5px; left: 15px; }
 
 /* ─── Record Section ───────────────────────────────────────────────────── */
 .question-card__record-section {

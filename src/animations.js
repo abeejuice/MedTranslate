@@ -4,7 +4,7 @@ const prefersReducedMotion = () =>
 // ── Orb — blob fluid sphere, GSAP-driven ─────────────────────────────────────
 
 const BLOB_IDLE_COLOR_3 = '#EA580C';
-const BLOB_RECORD_COLOR_3 = '#FB923C';
+const BLOB_RECORD_COLOR_3 = '#FF6EB4';
 
 function killOrbTweens(orbEl) {
   const mask = orbEl.querySelector('.orb-mask');
@@ -51,10 +51,10 @@ export function animateOrb(orbEl, state) {
 
     // Each blob drifts independently at slow speed
     const idleParams = [
-      { x: 20,  y: -18, dur: 4.2 },
-      { x: -22, y:  16, dur: 5.1 },
-      { x: -18, y: -20, dur: 4.7 },
-      { x:  24, y:  14, dur: 3.9 },
+      { x: 52,  y: -44, dur: 2.8 },
+      { x: -55, y:  40, dur: 3.5 },
+      { x: -48, y: -52, dur: 3.1 },
+      { x:  55, y:  38, dur: 2.6 },
     ];
     blobs.forEach((blob, i) => {
       const p = idleParams[i];
