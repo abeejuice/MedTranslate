@@ -2,7 +2,7 @@
 
 **Structured medical history-taking across India's language barrier.**
 
-*Kya* (Hindi) · *What* (English) · *Entha* (Telugu) — the same bewildered question a doctor and patient ask each other when they share no language.
+*Kya* (Hindi) · *What* (English) · *Entha* (Malayalam) — the same bewildered question a doctor and patient ask each other when they share no language.
 
 ![PWA](https://img.shields.io/badge/PWA-offline--ready-F97316?style=flat-square)
 ![Netlify](https://img.shields.io/badge/deployed-Netlify-00C7B7?style=flat-square)
@@ -14,13 +14,13 @@
 
 ## The Problem
 
-India has 22 constitutionally scheduled languages and hundreds of regional dialects. A doctor trained in Delhi speaks Hindi. The patient in front of her speaks Tamil. The intern in a Mumbai ward may be taking history from a Bengali-speaking migrant worker.
+India has multiple languages and hundreds of regional dialects. A doctor trained in Delhi speaks Hindi. The patient in front of her speaks Tamil. The intern in a Mumbai ward may be taking history from a Bengali-speaking patient.
 
 OPDs run at 50–80 patients per day. A consult is 3 minutes. There is no time for a human interpreter, and none is available at the bedside.
 
 Existing tools fail clinicians:
 
-- **Google Translate** — generic, no medical structure, no voice output, no offline mode
+- **Google Translate** — generic, no medical structure
 - **Phone-a-colleague** — slow, not always available, breaks patient confidentiality
 - **Hand gestures / simple English** — produces incomplete, unreliable histories
 - **Skipping the history** — causes missed diagnoses and poor clinical decisions
