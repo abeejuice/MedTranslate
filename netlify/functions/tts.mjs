@@ -4,7 +4,9 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SVARA_URL = "https://kenpath-svara-tts.hf.space/v1/audio/speech";
+// Set SVARA_TTS_URL env var when self-hosting Svara (docker run kenpath/svara-tts)
+// Leave unset to skip Svara and fall through to browser speechSynthesis
+const SVARA_URL = process.env.SVARA_TTS_URL || null;
 const SVARA_VOICE_MAP = {
   "hi-IN": "hi_female", "te-IN": "te_female", "ta-IN": "ta_female",
   "ml-IN": "ml_female", "kn-IN": "kn_female", "bn-IN": "bn_female",
@@ -83,12 +85,19 @@ export default async function handler(req) {
   let audioBase64;
   try {
     audioBase64 = await trySarvam(text, languageCode, apiKey);
-  } catch {
-    try {
-      audioBase64 = await trySvara(text, languageCode);
-    } catch (svaraErr) {
+  } catch (sarvamErr) {
+    if (SVARA_URL) {
+      try {
+        audioBase64 = await trySvara(text, languageCode);
+      } catch (svaraErr) {
+        return new Response(
+          JSON.stringify({ error: "TTS unavailable", details: svaraErr.message }),
+          { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
       return new Response(
-        JSON.stringify({ error: "TTS unavailable", details: svaraErr.message }),
+        JSON.stringify({ error: "TTS unavailable", details: sarvamErr.message }),
         { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
       );
     }
