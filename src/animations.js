@@ -51,10 +51,10 @@ export function animateOrb(orbEl, state) {
 
     // Each blob drifts independently at slow speed
     const idleParams = [
-      { x: 52,  y: -44, dur: 2.8 },
-      { x: -55, y:  40, dur: 3.5 },
-      { x: -48, y: -52, dur: 3.1 },
-      { x:  55, y:  38, dur: 2.6 },
+      { x: 38,  y: -34, dur: 2.8 },
+      { x: -40, y:  36, dur: 3.5 },
+      { x: -36, y: -38, dur: 3.1 },
+      { x:  40, y:  34, dur: 2.6 },
     ];
     blobs.forEach((blob, i) => {
       const p = idleParams[i];
@@ -186,4 +186,111 @@ export function pulseBtn(el) {
     { scale: 1 },
     { scale: 1.08, duration: 0.08, yoyo: true, repeat: 1, ease: 'power1.inOut', clearProps: 'transform' }
   );
+}
+
+// ── Language carousel (GSAP arc, rAF loop) ────────────────────────────────────
+
+export function initLanguageCarousel(wrapNode, onActiveChange) {
+  const container = wrapNode.querySelector('.lang-carousel');
+  const slides = Array.from(container.querySelectorAll('.lang-pill'));
+  const N = slides.length;
+  if (!N) return () => {};
+
+  const SLIDE_W    = 140;
+  const SLIDE_H    = 72;
+  const SLIDE_GAP  = 155;  // center-to-center horizontal spacing
+  const ARC_DEPTH  = 35;   // px pills drop at edges
+  const CENTER_LIFT = 10;  // extra lift for center pill
+  const LERP  = 0.08;
+  const TRACK = N * SLIDE_GAP;
+
+  let scrollTarget  = 0;
+  let scrollCurrent = 0;
+  let wrapW = 0, centerX = 0, baselineY = 0;
+  let activeIndex = -1;
+  let raf;
+
+  function measure() {
+    wrapW     = wrapNode.clientWidth;
+    centerX   = wrapW / 2;
+    baselineY = (wrapNode.clientHeight || 160) * 0.45;
+  }
+  measure();
+
+  function layout() {
+    let closestDist = Infinity, closestIdx = 0;
+
+    slides.forEach((slide, i) => {
+      let offset = (i * SLIDE_GAP - scrollCurrent) % TRACK;
+      if (offset < 0) offset += TRACK;
+      if (offset > TRACK / 2) offset -= TRACK;
+
+      const normDist = Math.min(Math.abs(offset) / (wrapW * 0.5), 1.3);
+      const scale    = Math.max(1.08 - normDist * 0.25, 0.85);
+      const opacity  = Math.max(1 - normDist * 0.8, 0.45);
+      const arcDrop  = (1 - Math.cos(normDist * Math.PI)) * 0.5 * ARC_DEPTH;
+      const lift     = Math.max(1 - normDist * 2, 0) * CENTER_LIFT;
+      const x        = centerX + offset - SLIDE_W / 2;
+      const y        = baselineY + arcDrop - lift - SLIDE_H / 2;
+      const zIndex   = Math.round(100 - normDist * 100);
+
+      gsap.set(slide, { x, y, scale, opacity, zIndex });
+
+      if (Math.abs(offset) < closestDist) {
+        closestDist = Math.abs(offset);
+        closestIdx  = i;
+      }
+    });
+
+    if (closestIdx !== activeIndex) {
+      if (activeIndex >= 0) slides[activeIndex].classList.remove('active');
+      activeIndex = closestIdx;
+      slides[activeIndex].classList.add('active');
+      onActiveChange?.(slides[activeIndex].dataset.code, slides[activeIndex].dataset.label);
+      navigator.vibrate?.(30);
+    }
+  }
+
+  function tick() {
+    scrollCurrent += (scrollTarget - scrollCurrent) * LERP;
+    layout();
+    raf = requestAnimationFrame(tick);
+  }
+
+  let isDragging = false, startX = 0;
+
+  function dragStart(e) {
+    isDragging = true;
+    startX = e.type.includes('touch') ? e.touches[0].clientX : e.pageX;
+  }
+  function dragMove(e) {
+    if (!isDragging) return;
+    const cx = e.type.includes('touch') ? e.touches[0].clientX : e.pageX;
+    scrollTarget += (startX - cx) * 1.5;
+    startX = cx;
+  }
+  function dragEnd() { isDragging = false; }
+
+  container.addEventListener('mousedown',  dragStart);
+  container.addEventListener('touchstart', dragStart, { passive: true });
+  window.addEventListener('mousemove', dragMove);
+  window.addEventListener('mouseup',   dragEnd);
+  container.addEventListener('touchmove', dragMove, { passive: true });
+  container.addEventListener('touchend',  dragEnd);
+  container.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      e.preventDefault();
+      scrollTarget += e.deltaX * 0.8;
+    }
+  }, { passive: false });
+
+  window.addEventListener('resize', measure);
+  raf = requestAnimationFrame(tick);
+
+  return () => {
+    cancelAnimationFrame(raf);
+    window.removeEventListener('resize',    measure);
+    window.removeEventListener('mousemove', dragMove);
+    window.removeEventListener('mouseup',   dragEnd);
+  };
 }

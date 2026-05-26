@@ -464,110 +464,135 @@ html, body {
 .form-input::placeholder { color: var(--color-text-2); }
 .form-input:focus { border-color: var(--color-primary); }
 
-/* ─── Complaint Grid ───────────────────────────────────────────────────── */
+/* ─── Language Carousel (GSAP arc) ────────────────────────────────────── */
+.lang-carousel-wrap {
+  position: relative;
+  overflow: hidden;
+  margin: 0 calc(-1 * var(--space-4));
+  height: 160px;
+  touch-action: pan-y;
+}
+
+.lang-carousel-wrap::before,
+.lang-carousel-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; width: 56px;
+  z-index: 200; pointer-events: none;
+}
+
+.lang-carousel-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-bg), transparent);
+}
+
+.lang-carousel-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-bg), transparent);
+}
+
+.lang-carousel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.lang-pill {
+  position: absolute;
+  top: 0; left: 0;
+  width: 140px;
+  height: 72px;
+  border-radius: 16px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform, opacity;
+  transition: box-shadow 200ms ease, border-color 200ms ease, background 200ms ease;
+}
+
+.lang-pill:active { cursor: grabbing; }
+
+.lang-pill.active {
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.35);
+}
+
+.lang-pill__flag   { font-size: 22px; line-height: 1; }
+.lang-pill__native {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-1);
+  font-family: var(--font-native);
+  line-height: 1.2;
+}
+.lang-pill__name   { font-size: 10px; color: var(--color-text-2); }
+
+/* ─── Complaint Tile Grid ──────────────────────────────────────────────── */
 .complaint-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
+  gap: 10px;
 }
 
-.complaint-card {
+.complaint-tile:last-child:nth-child(odd) {
+  grid-column: span 2;
+}
+
+.complaint-tile {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-3);
-  background: var(--color-surface-2);
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
   border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
   cursor: pointer;
-  font-family: var(--font-body);
-  transition: border-color var(--transition-fast), background var(--transition-fast);
-  text-align: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow 200ms ease, border-color 200ms ease, background 200ms ease;
 }
 
-.complaint-card.selected {
-  background: var(--color-primary-bg);
-  border-color: var(--color-primary);
+.complaint-tile__icon {
+  font-size: 20px;
+  color: var(--color-primary);
+  opacity: 0.7;
+  flex-shrink: 0;
+  transition: opacity 180ms ease;
 }
 
-.complaint-card__icon {
-  font-size: 28px;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-primary-bg);
-  border-radius: var(--radius-md);
-}
-
-.complaint-card__label {
+.complaint-tile__label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-text-1);
+  color: var(--color-text-2);
   line-height: 1.3;
+  transition: color 180ms ease;
 }
 
-/* ─── Language Circles ─────────────────────────────────────────────────── */
-.lang-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-  padding: var(--space-2) 0 var(--space-3);
+/* Hover (desktop) */
+.complaint-tile:hover {
+  border-color: rgba(249, 115, 22, 0.4);
 }
+.complaint-tile:hover .complaint-tile__icon { opacity: 1; }
+.complaint-tile:hover .complaint-tile__label { color: var(--color-text-1); }
 
-.lang-circle {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  padding: 4px;
-}
-
-.lang-circle__ring {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  transition: border-color var(--transition-mid), box-shadow var(--transition-mid);
-}
-
-.lang-circle.selected .lang-circle__ring {
+/* Selected — matches lang-pill.active glow */
+.complaint-tile.selected {
+  background: var(--color-primary-bg);
   border-color: var(--color-primary);
-  box-shadow: 0 0 16px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.35);
 }
-
-.lang-circle__flag {
-  font-size: 26px;
-  line-height: 1;
-}
-
-.lang-circle__native {
-  font-family: var(--font-native);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--color-text-2);
-  text-align: center;
-  line-height: 1.2;
-}
-
-.lang-circle__label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-2);
-  text-align: center;
-}
-
-.lang-circle.selected .lang-circle__label {
+.complaint-tile.selected .complaint-tile__icon { opacity: 1; }
+.complaint-tile.selected .complaint-tile__label {
   color: var(--color-primary);
+  font-weight: 600;
 }
 
 /* ─── Answered Counter ─────────────────────────────────────────────────── */
@@ -740,10 +765,10 @@ html, body {
   will-change: transform;
 }
 
-.orb-blob--1 { background: #FF6A00; top:  5px; left:  5px; }
-.orb-blob--2 { background: #FFD000; bottom: 10px; right: 10px; }
-.orb-blob--3 { background: #FF4500; top: 30px; right:  5px; }
-.orb-blob--4 { background: #FFE55C; bottom:  5px; left: 15px; }
+.orb-blob--1 { background: #FF6A00; top: 10px; left: 10px; }
+.orb-blob--2 { background: #FFD000; top: 40px; left: 40px; }
+.orb-blob--3 { background: #FF4500; top: 10px; left: 40px; }
+.orb-blob--4 { background: #FFE55C; top: 40px; left: 10px; }
 
 /* ─── Record Section ───────────────────────────────────────────────────── */
 .question-card__record-section {

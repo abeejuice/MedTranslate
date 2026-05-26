@@ -1,8 +1,22 @@
 import { registerScreen, navigate } from '../router.js';
 import { TEMPLATES, LANGUAGES } from '../data/templates.js';
-import { pulseBtn } from '../animations.js';
+import { pulseBtn, initLanguageCarousel } from '../animations.js';
 
-const LANG_FLAGS = { hi: '🇮🇳', te: '🇮🇳', ta: '🇮🇳', ml: '🇮🇳', bn: '🇧🇩', mr: '🇮🇳', ne: '🇳🇵' };
+const LANG_FLAGS = { hi: '🇮🇳', te: '🇮🇳', ta: '🇮🇳', ml: '🇮🇳', kn: '🇮🇳', bn: '🇧🇩', mr: '🇮🇳', ne: '🇳🇵' };
+
+const FA_ICON_MAP = {
+  'chest-pain':             'fa-heart-pulse',
+  'breathlessness':         'fa-lungs',
+  'abdominal-pain':         'fa-person',
+  'fever':                  'fa-thermometer',
+  'headache':               'fa-brain',
+  'vomiting-nausea':        'fa-face-nauseated',
+  'loss-of-consciousness':  'fa-bolt',
+  'weakness-paralysis':     'fa-hand',
+  'urinary-complaints':     'fa-droplet',
+  'trauma-injury':          'fa-bandage',
+  'general-history':        'fa-clipboard-list',
+};
 
 function makeBackArrow() {
   const ns = 'http://www.w3.org/2000/svg';
@@ -22,12 +36,110 @@ function makeBackArrow() {
   return svg;
 }
 
-function mountSessionSetup(el, params, navigateFn) {
-  let selectedTemplateId = null;
-  let selectedLanguageCode = null;
-  let selectedLanguageLabel = null;
+// ── Language Carousel (GSAP arc) ──────────────────────────────────────────────
+function buildLangCarousel(onSelect) {
+  const wrap  = document.createElement('div');
+  wrap.className = 'lang-carousel-wrap';
 
-  // ── Header ────────────────────────────────────────────────
+  const track = document.createElement('div');
+  track.className = 'lang-carousel';
+  track.setAttribute('role', 'listbox');
+  track.setAttribute('aria-label', "Patient's language");
+
+  LANGUAGES.forEach(lang => {
+    const pill = document.createElement('div');
+    pill.className = 'lang-pill';
+    pill.setAttribute('role', 'option');
+    pill.setAttribute('aria-label', lang.label);
+    pill.dataset.code  = lang.code;
+    pill.dataset.label = lang.label;
+
+    const flag = document.createElement('div');
+    flag.className   = 'lang-pill__flag';
+    flag.textContent = LANG_FLAGS[lang.code] || '🌐';
+
+    const native = document.createElement('div');
+    native.className   = 'lang-pill__native';
+    native.textContent = lang.nativeLabel;
+
+    const name = document.createElement('div');
+    name.className   = 'lang-pill__name';
+    name.textContent = lang.label;
+
+    pill.appendChild(flag);
+    pill.appendChild(native);
+    pill.appendChild(name);
+    track.appendChild(pill);
+  });
+
+  wrap.appendChild(track);
+
+  // Deferred init — must be called after wrap is in the DOM
+  wrap._startCarousel = (cb) => initLanguageCarousel(wrap, cb);
+  return wrap;
+}
+
+// ── Complaint Tile Grid ───────────────────────────────────────────────────────
+function buildComplaintGrid(onSelect) {
+  const grid = document.createElement('div');
+  grid.className = 'complaint-grid';
+
+  let selectedItem = null;
+
+  TEMPLATES.forEach(template => {
+    const item = document.createElement('div');
+    item.className = 'complaint-tile';
+    item.setAttribute('role', 'button');
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('aria-label', template.label);
+
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'complaint-tile__icon';
+
+    const icon = document.createElement('i');
+    icon.className = `fa-solid ${FA_ICON_MAP[template.id] || 'fa-circle-dot'}`;
+    icon.setAttribute('aria-hidden', 'true');
+    iconWrap.appendChild(icon);
+
+    const label = document.createElement('div');
+    label.className = 'complaint-tile__label';
+    label.textContent = template.label;
+
+    item.appendChild(iconWrap);
+    item.appendChild(label);
+
+    const select = () => {
+      if (selectedItem) selectedItem.classList.remove('selected');
+      selectedItem = item;
+      item.classList.add('selected');
+
+      gsap.timeline()
+        .to(item, { scale: 1.04, duration: 0.08, ease: 'power2.out' })
+        .to(item, { scale: 1,    duration: 0.18, ease: 'back.out(2.5)', clearProps: 'transform' });
+
+      onSelect(template.id, template.label);
+    };
+
+    item.addEventListener('click', select);
+    item.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
+    });
+
+    grid.appendChild(item);
+  });
+
+  return grid;
+}
+
+// ── Main mount ────────────────────────────────────────────────────────────────
+function mountSessionSetup(el, params, navigateFn) {
+  let selectedTemplateId    = null;
+  let selectedLanguageCode  = null;
+  let selectedLanguageLabel = null;
+  let cleanupCarousel       = null;
+  let beginBtn              = null;
+
+  // ── Header ────────────────────────────────────────────
   const header = document.createElement('div');
   header.className = 'app-header';
 
@@ -44,11 +156,54 @@ function mountSessionSetup(el, params, navigateFn) {
   header.appendChild(backBtn);
   header.appendChild(headerTitle);
 
-  // ── Content ───────────────────────────────────────────────
+  // ── Content ───────────────────────────────────────────
   const content = document.createElement('div');
   content.className = 'screen-content';
 
-  // Patient name field
+  // ── 1. Language carousel ──────────────────────────────
+  const langLabel = document.createElement('div');
+  langLabel.className = 'form-label';
+  langLabel.style.marginBottom = 'var(--space-3)';
+  const req1 = document.createElement('span');
+  req1.textContent = ' *';
+  req1.style.color = 'var(--color-error)';
+  langLabel.appendChild(document.createTextNode("Patient's Language"));
+  langLabel.appendChild(req1);
+  content.appendChild(langLabel);
+
+  const carousel = buildLangCarousel((code, label) => {
+    selectedLanguageCode  = code;
+    selectedLanguageLabel = label;
+    updateBeginButton();
+  });
+  content.appendChild(carousel);
+
+  const sp1 = document.createElement('div');
+  sp1.style.height = 'var(--space-6)';
+  content.appendChild(sp1);
+
+  // ── 2. Chief Complaint deck ───────────────────────────
+  const complaintLabel = document.createElement('div');
+  complaintLabel.className = 'form-label';
+  complaintLabel.style.marginBottom = 'var(--space-3)';
+  const req2 = document.createElement('span');
+  req2.textContent = ' *';
+  req2.style.color = 'var(--color-error)';
+  complaintLabel.appendChild(document.createTextNode('Chief Complaint'));
+  complaintLabel.appendChild(req2);
+  content.appendChild(complaintLabel);
+
+  const deck = buildComplaintGrid((id) => {
+    selectedTemplateId = id;
+    updateBeginButton();
+  });
+  content.appendChild(deck);
+
+  const sp2 = document.createElement('div');
+  sp2.style.height = 'var(--space-6)';
+  content.appendChild(sp2);
+
+  // ── 3. Patient Name (optional) ────────────────────────
   const nameGroup = document.createElement('div');
   nameGroup.className = 'form-group';
 
@@ -63,153 +218,29 @@ function mountSessionSetup(el, params, navigateFn) {
   nameInput.type = 'text';
   nameInput.placeholder = 'e.g. Ramu, UHID-1234';
   nameInput.autocomplete = 'off';
-  nameInput.autocorrect = 'off';
+  nameInput.autocorrect  = 'off';
   nameInput.autocapitalize = 'words';
 
   nameGroup.appendChild(nameLabel);
   nameGroup.appendChild(nameInput);
   content.appendChild(nameGroup);
 
-  // Spacer
-  const sp1 = document.createElement('div');
-  sp1.style.height = 'var(--space-6)';
-  content.appendChild(sp1);
-
-  // Chief Complaint
-  const complaintLabel = document.createElement('div');
-  complaintLabel.className = 'form-label';
-  complaintLabel.style.marginBottom = 'var(--space-3)';
-  const complaintText = document.createTextNode('Chief Complaint');
-  const req1 = document.createElement('span');
-  req1.className = 'required';
-  req1.textContent = ' *';
-  req1.style.color = 'var(--color-error)';
-  complaintLabel.appendChild(complaintText);
-  complaintLabel.appendChild(req1);
-  content.appendChild(complaintLabel);
-
-  const grid = document.createElement('div');
-  grid.className = 'complaint-grid';
-
-  const complaintEls = [];
-  TEMPLATES.forEach(template => {
-    const card = document.createElement('button');
-    card.className = 'complaint-card';
-    card.type = 'button';
-    card.setAttribute('data-template-id', template.id);
-
-    const iconEl = document.createElement('div');
-    iconEl.className = 'complaint-card__icon';
-    iconEl.textContent = template.icon;
-
-    const labelEl = document.createElement('div');
-    labelEl.className = 'complaint-card__label';
-    labelEl.textContent = template.label;
-
-    card.appendChild(iconEl);
-    card.appendChild(labelEl);
-
-    card.addEventListener('click', () => {
-      complaintEls.forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      selectedTemplateId = template.id;
-      pulseBtn(card);
-      updateBeginButton();
-    });
-
-    grid.appendChild(card);
-    complaintEls.push(card);
-  });
-
-  content.appendChild(grid);
-
-  // Spacer
-  const sp2 = document.createElement('div');
-  sp2.style.height = 'var(--space-6)';
-  content.appendChild(sp2);
-
-  // Language section
-  const langLabel = document.createElement('div');
-  langLabel.className = 'form-label';
-  langLabel.style.marginBottom = 'var(--space-3)';
-  const langText = document.createTextNode("Patient's Language");
-  const req2 = document.createElement('span');
-  req2.className = 'required';
-  req2.textContent = ' *';
-  req2.style.color = 'var(--color-error)';
-  langLabel.appendChild(langText);
-  langLabel.appendChild(req2);
-  content.appendChild(langLabel);
-
-  const langRow = document.createElement('div');
-  langRow.className = 'lang-grid';
-
-  const langEls = [];
-  LANGUAGES.forEach(lang => {
-    const circle = document.createElement('div');
-    circle.className = 'lang-circle';
-    circle.setAttribute('role', 'button');
-    circle.setAttribute('tabindex', '0');
-    circle.setAttribute('aria-label', lang.label);
-
-    const ring = document.createElement('div');
-    ring.className = 'lang-circle__ring';
-
-    const flag = document.createElement('div');
-    flag.className = 'lang-circle__flag';
-    flag.textContent = LANG_FLAGS[lang.code] || '🌐';
-
-    const native = document.createElement('div');
-    native.className = 'lang-circle__native';
-    native.textContent = lang.nativeLabel;
-
-    ring.appendChild(flag);
-    ring.appendChild(native);
-
-    const name = document.createElement('div');
-    name.className = 'lang-circle__label';
-    name.textContent = lang.label;
-
-    circle.appendChild(ring);
-    circle.appendChild(name);
-
-    const select = () => {
-      langEls.forEach(c => c.classList.remove('selected'));
-      circle.classList.add('selected');
-      selectedLanguageCode = lang.code;
-      selectedLanguageLabel = lang.label;
-      pulseBtn(ring);
-      updateBeginButton();
-    };
-
-    circle.addEventListener('click', select);
-    circle.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
-    });
-
-    langRow.appendChild(circle);
-    langEls.push(circle);
-  });
-
-  content.appendChild(langRow);
-
-  // Bottom padding so footer doesn't cut off scroll
   const sp3 = document.createElement('div');
   sp3.style.height = 'var(--space-8)';
   content.appendChild(sp3);
 
-  // ── Footer ────────────────────────────────────────────────
+  // ── Footer ────────────────────────────────────────────
   const footer = document.createElement('div');
   footer.className = 'screen-footer';
 
-  const beginBtn = document.createElement('button');
+  beginBtn = document.createElement('button');
   beginBtn.className = 'btn btn-primary';
   beginBtn.type = 'button';
   beginBtn.textContent = 'Begin Session →';
   beginBtn.disabled = true;
 
   function updateBeginButton() {
-    beginBtn.disabled = !(selectedTemplateId && selectedLanguageCode);
+    if (beginBtn) beginBtn.disabled = !(selectedTemplateId && selectedLanguageCode);
   }
 
   beginBtn.addEventListener('click', () => {
@@ -229,12 +260,21 @@ function mountSessionSetup(el, params, navigateFn) {
 
   footer.appendChild(beginBtn);
 
-  // ── Assemble ──────────────────────────────────────────────
+  // ── Assemble ──────────────────────────────────────────
   el.appendChild(header);
   el.appendChild(content);
   el.appendChild(footer);
 
-  // ── Keyboard avoidance (visualViewport) ───────────────────
+  // Start GSAP carousel after DOM is mounted
+  requestAnimationFrame(() => {
+    cleanupCarousel = carousel._startCarousel((code, label) => {
+      selectedLanguageCode  = code;
+      selectedLanguageLabel = label;
+      updateBeginButton();
+    });
+  });
+
+  // ── Keyboard avoidance ────────────────────────────────
   function onViewportResize() {
     const vv = window.visualViewport;
     if (!vv) return;
@@ -248,6 +288,7 @@ function mountSessionSetup(el, params, navigateFn) {
   }
 
   el.addEventListener('_unmount', () => {
+    cleanupCarousel?.();
     if (window.visualViewport) {
       window.visualViewport.removeEventListener('resize', onViewportResize);
       window.visualViewport.removeEventListener('scroll', onViewportResize);
