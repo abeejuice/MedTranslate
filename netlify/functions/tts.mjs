@@ -4,8 +4,45 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const SVARA_URL = "https://kenpath-svara-tts.hf.space/v1/audio/speech";
+const SVARA_VOICE_MAP = {
+  "hi-IN": "hi_female", "te-IN": "te_female", "ta-IN": "ta_female",
+  "ml-IN": "ml_female", "kn-IN": "kn_female", "bn-IN": "bn_female",
+  "mr-IN": "mr_female", "ne-NP": "ne_female",
+};
+
+async function trySarvam(text, languageCode, apiKey) {
+  const res = await fetch("https://api.sarvam.ai/text-to-speech", {
+    method: "POST",
+    headers: { "api-subscription-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      inputs: [text],
+      target_language_code: languageCode,
+      speaker: "anushka",
+      model: "bulbul:v2",
+      enable_preprocessing: true,
+    }),
+  });
+  if (!res.ok) throw new Error("Sarvam " + res.status);
+  const data = await res.json();
+  const audio = data.audios?.[0];
+  if (!audio) throw new Error("Sarvam: empty audio response");
+  return audio;
+}
+
+async function trySvara(text, languageCode) {
+  const voice = SVARA_VOICE_MAP[languageCode] || "hi_female";
+  const res = await fetch(SVARA_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ input: text, voice, response_format: "wav" }),
+  });
+  if (!res.ok) throw new Error("Svara " + res.status);
+  const buf = await res.arrayBuffer();
+  return Buffer.from(buf).toString("base64");
+}
+
 export default async function handler(req) {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: CORS_HEADERS });
   }
@@ -19,13 +56,10 @@ export default async function handler(req) {
 
   const apiKey = process.env.SARVAM_API_KEY;
   if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: "TTS service not configured" }),
-      {
-        status: 500,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ error: "TTS service not configured" }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
   }
 
   let body;
@@ -39,90 +73,30 @@ export default async function handler(req) {
   }
 
   const { text, languageCode } = body;
-
   if (!text || !languageCode) {
-    return new Response(
-      JSON.stringify({ error: "text and languageCode are required" }),
-      {
-        status: 400,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
-  }
-
-  let sarvamResponse;
-  try {
-    sarvamResponse = await fetch("https://api.sarvam.ai/text-to-speech", {
-      method: "POST",
-      headers: {
-        "api-subscription-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        inputs: [text],
-        target_language_code: languageCode,
-        speaker: "anushka",
-        model: "bulbul:v2",
-        enable_preprocessing: true,
-      }),
+    return new Response(JSON.stringify({ error: "text and languageCode are required" }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: "TTS failed", details: err.message }),
-      {
-        status: 502,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
   }
 
-  if (!sarvamResponse.ok) {
-    let details = sarvamResponse.statusText;
-    try {
-      const errJson = await sarvamResponse.json();
-      details = JSON.stringify(errJson);
-    } catch {
-      // ignore parse error, use statusText
-    }
-    return new Response(
-      JSON.stringify({ error: "TTS failed", details }),
-      {
-        status: sarvamResponse.status,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
-  }
-
-  let sarvamData;
+  let audioBase64;
   try {
-    sarvamData = await sarvamResponse.json();
+    audioBase64 = await trySarvam(text, languageCode, apiKey);
   } catch {
-    return new Response(
-      JSON.stringify({ error: "TTS failed", details: "Invalid response from TTS service" }),
-      {
-        status: 502,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
-  }
-
-  const audioBase64 = sarvamData.audios?.[0];
-  if (!audioBase64) {
-    return new Response(
-      JSON.stringify({ error: "TTS failed", details: "No audio in response" }),
-      {
-        status: 502,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
+    try {
+      audioBase64 = await trySvara(text, languageCode);
+    } catch (svaraErr) {
+      return new Response(
+        JSON.stringify({ error: "TTS unavailable", details: svaraErr.message }),
+        { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      );
+    }
   }
 
   return new Response(
     JSON.stringify({ audio: audioBase64, format: "wav" }),
-    {
-      status: 200,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-    }
+    { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
   );
 }
 

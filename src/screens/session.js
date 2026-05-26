@@ -7,6 +7,17 @@ import { showBottomSheet } from '../utils.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+function speakWithBrowser(text, langCode) {
+  return new Promise((resolve, reject) => {
+    if (!window.speechSynthesis) return reject(new Error('no speechSynthesis'));
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = langCode;
+    utt.onend = resolve;
+    utt.onerror = reject;
+    window.speechSynthesis.speak(utt);
+  });
+}
+
 async function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -556,7 +567,17 @@ async function mountSession(el, params) {
         btn.style.display = '';
       });
     } catch (err) {
-      if (err.name !== 'AbortError') showToast('Could not play audio', 'error');
+      if (err.name === 'AbortError') { btn.style.display = ''; btn.textContent = origText; btn.disabled = false; return; }
+      const langObj = getLanguage(languageCode);
+      const sarvamCode = langObj ? langObj.sarvamCode : 'hi-IN';
+      try {
+        animateOrb(orbEl, 'speaking');
+        await speakWithBrowser(q.native || q.english, sarvamCode);
+        animateOrb(orbEl, 'idle');
+      } catch {
+        animateOrb(orbEl, 'idle');
+        showToast('Audio unavailable. Please read the text to the patient.', 'error');
+      }
       btn.style.display = '';
     } finally {
       btn.textContent = origText;
