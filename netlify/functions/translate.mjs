@@ -12,6 +12,7 @@ const LANGUAGE_MAPPING = {
   te: "te-IN",
   ta: "ta-IN",
   ml: "ml-IN",
+  kn: "kn-IN",
   bn: "bn-IN",
   mr: "mr-IN",
   ne: "ne-NP",

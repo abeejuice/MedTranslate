@@ -248,6 +248,7 @@ export const LANGUAGES = [
   { code: 'te', label: 'Telugu',    nativeLabel: 'తెలుగు',    sarvamCode: 'te-IN' },
   { code: 'ta', label: 'Tamil',     nativeLabel: 'தமிழ்',    sarvamCode: 'ta-IN' },
   { code: 'ml', label: 'Malayalam', nativeLabel: 'മലയാളം',   sarvamCode: 'ml-IN' },
+  { code: 'kn', label: 'Kannada',   nativeLabel: 'ಕನ್ನಡ',    sarvamCode: 'kn-IN' },
   { code: 'bn', label: 'Bengali',   nativeLabel: 'বাংলা',    sarvamCode: 'bn-IN' },
   { code: 'mr', label: 'Marathi',   nativeLabel: 'मराठी',    sarvamCode: 'mr-IN' },
   { code: 'ne', label: 'Nepali',    nativeLabel: 'नेपाली',   sarvamCode: 'ne-NP' },
