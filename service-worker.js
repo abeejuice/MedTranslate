@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medtranslate-v14';
+const CACHE_NAME = 'medtranslate-v15';
 const STATIC_ASSETS = [
   '/', '/index.html', '/styles/main.css', '/src/app.js',
   '/src/router.js', '/src/db.js', '/src/toast.js', '/src/utils.js',
@@ -32,7 +32,7 @@ self.addEventListener('fetch', e => {
               cache.put(e.request, response.clone());
             }
             return response;
-          }).catch(() => cached);
+          }).catch(() => cached || new Response('', { status: 503, statusText: 'Offline' }));
         })
       )
     );
