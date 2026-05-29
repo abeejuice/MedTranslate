@@ -133,6 +133,29 @@ export function animateOrb(orbEl, state) {
         delay: 0.4 + i * 0.08,
       });
     });
+    return;
+  }
+
+  if (state === 'processing') {
+    gsap.to(orbEl, { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' });
+
+    // Mid-speed drift — between idle and speaking, communicates "thinking"
+    const procParams = [
+      { x: 28, y: -24, dur: 2.2 },
+      { x: -26, y:  28, dur: 2.7 },
+      { x: -24, y: -26, dur: 2.4 },
+      { x:  25, y:  22, dur: 2.0 },
+    ];
+    blobs.forEach((blob, i) => {
+      const p = procParams[i];
+      gsap.to(blob, {
+        x: p.x, y: p.y,
+        duration: p.dur,
+        repeat: -1, yoyo: true,
+        ease: 'sine.inOut',
+        delay: i * 0.3,
+      });
+    });
   }
 }
 

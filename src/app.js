@@ -4,6 +4,7 @@ import { register as registerSessionSetup } from './screens/session-setup.js';
 import { register as registerSession } from './screens/session.js';
 import { register as registerSessionSummary } from './screens/session-summary.js';
 import { register as registerPastSessions } from './screens/past-sessions.js';
+import { register as registerQuickOpd } from './screens/quick-opd.js';
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/service-worker.js').catch(err => {
@@ -16,5 +17,6 @@ registerSessionSetup();
 registerSession();
 registerSessionSummary();
 registerPastSessions();
+registerQuickOpd();
 
 navigate('home');
