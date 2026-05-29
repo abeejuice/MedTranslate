@@ -167,6 +167,9 @@ async function mountHome(el, params, navigateFn) {
   startBtn.addEventListener('click', () => { navigator.vibrate?.(12); navigateFn('session-setup', {}, 'forward'); });
   ringWrap.appendChild(startBtn);
 
+  const opdWrapper = document.createElement('div');
+  opdWrapper.className = 'opd-btn-wrapper';
+
   const opdRingWrap = document.createElement('div');
   opdRingWrap.className = 'btn-opd-ring';
   opdRingWrap.addEventListener('click', () => { navigator.vibrate?.(12); navigateFn('quick-opd', {}, 'forward'); });
@@ -175,22 +178,17 @@ async function mountHome(el, params, navigateFn) {
   opdBtn.className = 'btn-opd';
   opdBtn.setAttribute('aria-label', 'Quick OPD — instant translation');
 
-  const opdIcon = document.createElement('span');
-  opdIcon.className = 'btn-opd__icon';
-  opdIcon.setAttribute('aria-hidden', 'true');
-  opdIcon.textContent = '🎤';
+  const opdCaption = document.createElement('span');
+  opdCaption.className = 'btn-opd__caption';
+  opdCaption.textContent = 'OPD';
 
-  const opdLabel = document.createElement('span');
-  opdLabel.className = 'btn-opd__label';
-  opdLabel.textContent = 'OPD';
-
-  opdBtn.appendChild(opdIcon);
-  opdBtn.appendChild(opdLabel);
   opdRingWrap.appendChild(opdBtn);
+  opdWrapper.appendChild(opdRingWrap);
+  opdWrapper.appendChild(opdCaption);
 
   hero.appendChild(tagline);
   hero.appendChild(ringWrap);
-  hero.appendChild(opdRingWrap);
+  hero.appendChild(opdWrapper);
   content.appendChild(hero);
 
   // Recent sessions
