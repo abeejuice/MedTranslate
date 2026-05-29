@@ -266,7 +266,7 @@ html, body {
 
 /* ─── Home: Hero section ───────────────────────────────────────────────── */
 .hero {
-  padding: var(--space-5) 0 var(--space-5);
+  padding: var(--space-5) 0 var(--space-8);
   text-align: left;
 }
 
@@ -309,7 +309,9 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: var(--space-6) 0 var(--space-3);
+  margin: var(--space-5) 0 var(--space-3);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
 }
 
 .section-heading-row .section-heading {
@@ -334,7 +336,7 @@ html, body {
 .session-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .session-item {
@@ -1115,4 +1117,318 @@ html, body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ─── Home: Quick OPD circular button ─────────────────────────────────── */
+/* ── OPD rotating ring wrapper ──────────────────────────────────────────── */
+.btn-opd-ring {
+  position: relative;
+  border-radius: 50%;
+  padding: 3px;
+  overflow: hidden;
+  width: 78px;
+  height: 78px;
+  margin: var(--space-5) auto 0;
+  flex-shrink: 0;
+  transition: box-shadow 0.35s ease, transform 0.15s ease;
+}
+
+.btn-opd-ring::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  padding-bottom: 200%;
+  transform: translate(-50%, -50%) rotate(0deg);
+  background: conic-gradient(
+    #0D0D0D   0deg,
+    #F97316  60deg,
+    #EA580C  90deg,
+    #0D0D0D  130deg,
+    #0D0D0D  145deg,
+    rgba(255, 245, 200, 0.85) 158deg,
+    #EA580C  168deg,
+    #F97316  185deg,
+    #0D0D0D  220deg,
+    #0D0D0D  360deg
+  );
+  pointer-events: none;
+  animation: ring-spin-opd 5s linear infinite;
+}
+
+.btn-opd-ring:hover::before {
+  animation-duration: 1.2s;
+}
+
+.btn-opd-ring:hover {
+  box-shadow:
+    0 0 8px  rgba(249, 115, 22, 0.6),
+    0 0 22px rgba(249, 115, 22, 0.25);
+}
+
+.btn-opd-ring:active {
+  transform: scale(0.93);
+}
+
+@keyframes ring-spin-opd {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* ── OPD inner button (3D glass) ─────────────────────────────────────────── */
+.btn-opd {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 65% 50% at 38% 28%,
+      rgba(255, 255, 255, 0.13) 0%,
+      transparent 65%
+    ),
+    radial-gradient(circle at 50% 50%,
+      #2E2E2E 0%,
+      #1A1A1A 100%
+    );
+  border: none;
+  box-shadow:
+    inset 0 2px 5px rgba(255, 255, 255, 0.09),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+  color: var(--color-primary);
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.btn-opd__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.btn-opd__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--color-primary);
+}
+
+/* ─── Quick OPD screen ─────────────────────────────────────────────────── */
+.quick-opd-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-opd-lang-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.quick-opd-lang-bar__label {
+  font-size: 12px;
+  color: var(--color-text-2);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.quick-opd-lang-select {
+  flex: 1;
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-1);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: var(--space-1) var(--space-3);
+  outline: none;
+  cursor: pointer;
+}
+
+.quick-opd-orb-area {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) 0 var(--space-4);
+}
+
+.quick-opd-controls {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--space-4);
+  padding: 0 var(--space-4) var(--space-4);
+  justify-content: center;
+}
+
+/* ─── Mic buttons ──────────────────────────────────────────────────────── */
+.btn-mic {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100px;
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--color-border);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: transform var(--transition-fast), opacity var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-mic:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-mic:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+.btn-mic__icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.btn-mic__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.btn-mic-doctor {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.btn-mic-doctor.recording {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+}
+
+.btn-mic-patient {
+  background: rgba(99, 102, 241, 0.08);
+  color: #818cf8;
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+.btn-mic-patient.recording {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: #818cf8;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+/* ─── Conversation log ─────────────────────────────────────────────────── */
+.quick-opd-log {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-3) var(--space-4);
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.quick-opd-log::-webkit-scrollbar { display: none; }
+
+.quick-opd-log__empty {
+  text-align: center;
+  color: var(--color-text-3);
+  font-size: 13px;
+  padding: var(--space-8) 0;
+  flex: 1;
+}
+
+@keyframes opdEntryIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.opd-log-entry {
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-left: 3px solid transparent;
+  transition: box-shadow 0.3s ease;
+  box-sizing: border-box;
+}
+
+.opd-log-entry--doctor {
+  background: var(--color-surface-2);
+  border-color: var(--color-primary);
+  border-top: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.opd-log-entry--patient {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: #818cf8;
+  border-top: 1px solid rgba(99, 102, 241, 0.15);
+  border-right: 1px solid rgba(99, 102, 241, 0.15);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.opd-log-entry--doctor.opd-log-entry--active {
+  box-shadow: 0 0 0 1px rgba(251,146,60,0.3), 0 4px 20px rgba(251,146,60,0.1);
+}
+
+.opd-log-entry--patient.opd-log-entry--active {
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.3), 0 4px 20px rgba(99,102,241,0.1);
+}
+
+.opd-log-entry__role {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.opd-log-entry--doctor .opd-log-entry__role {
+  color: var(--color-primary);
+}
+
+.opd-log-entry--patient .opd-log-entry__role {
+  color: #818cf8;
+}
+
+.opd-log-entry__english {
+  font-size: 13px;
+  color: var(--color-text-2);
+  line-height: 1.5;
+}
+
+.opd-log-entry__native {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text-1);
+  line-height: 1.5;
+}
+
+.opd-log-entry__playing {
+  font-size: 11px;
+  color: var(--color-primary);
+  opacity: 0.8;
+  margin-top: var(--space-1);
+  letter-spacing: 0.3px;
 }
