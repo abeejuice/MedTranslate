@@ -15,7 +15,7 @@ function formatDateTime(isoString) {
 function buildSessionItem(session, navigateFn) {
   const template = TEMPLATES.find(t => t.id === session.templateId);
   const icon = template ? template.icon : '📋';
-  const label = template ? template.label : (session.templateId || 'Session');
+  const label = template ? template.label : (session.templateLabel || session.templateId || 'Session');
   const patient = session.patientLabel || 'Anonymous';
   const lang = session.languageLabel || session.languageCode || '';
   const dateStr = formatDateTime(session.startedAt);
@@ -164,11 +164,33 @@ async function mountHome(el, params, navigateFn) {
   const startBtn = document.createElement('button');
   startBtn.className = 'btn-start';
   startBtn.textContent = '+ Start New Session';
-  startBtn.addEventListener('click', () => navigateFn('session-setup', {}, 'forward'));
+  startBtn.addEventListener('click', () => { navigator.vibrate?.(12); navigateFn('session-setup', {}, 'forward'); });
   ringWrap.appendChild(startBtn);
+
+  const opdRingWrap = document.createElement('div');
+  opdRingWrap.className = 'btn-opd-ring';
+  opdRingWrap.addEventListener('click', () => { navigator.vibrate?.(12); navigateFn('quick-opd', {}, 'forward'); });
+
+  const opdBtn = document.createElement('button');
+  opdBtn.className = 'btn-opd';
+  opdBtn.setAttribute('aria-label', 'Quick OPD — instant translation');
+
+  const opdIcon = document.createElement('span');
+  opdIcon.className = 'btn-opd__icon';
+  opdIcon.setAttribute('aria-hidden', 'true');
+  opdIcon.textContent = '🎤';
+
+  const opdLabel = document.createElement('span');
+  opdLabel.className = 'btn-opd__label';
+  opdLabel.textContent = 'OPD';
+
+  opdBtn.appendChild(opdIcon);
+  opdBtn.appendChild(opdLabel);
+  opdRingWrap.appendChild(opdBtn);
 
   hero.appendChild(tagline);
   hero.appendChild(ringWrap);
+  hero.appendChild(opdRingWrap);
   content.appendChild(hero);
 
   // Recent sessions
@@ -193,7 +215,7 @@ async function mountHome(el, params, navigateFn) {
       const seeAll = document.createElement('button');
       seeAll.className = 'see-all-btn';
       seeAll.textContent = 'See All →';
-      seeAll.addEventListener('click', () => navigateFn('past-sessions', {}, 'forward'));
+      seeAll.addEventListener('click', () => { navigator.vibrate?.(8); navigateFn('past-sessions', {}, 'forward'); });
       headingRow.appendChild(seeAll);
     }
     if (recent.length === 0) {
