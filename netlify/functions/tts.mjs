@@ -4,6 +4,22 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+function logEvent(event) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return;
+  fetch(`${url}/rest/v1/api_events`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(event),
+  }).catch(() => {});
+}
+
 // Set SVARA_TTS_URL env var when self-hosting Svara (docker run kenpath/svara-tts)
 // Leave unset to skip Svara and fall through to browser speechSynthesis
 const SVARA_URL = process.env.SVARA_TTS_URL || null;
@@ -74,7 +90,7 @@ export default async function handler(req) {
     });
   }
 
-  const { text, languageCode } = body;
+  const { text, languageCode, feature = null } = body;
   if (!text || !languageCode) {
     return new Response(JSON.stringify({ error: "text and languageCode are required" }), {
       status: 400,
@@ -102,6 +118,14 @@ export default async function handler(req) {
       );
     }
   }
+
+  logEvent({
+    event_type: "tts",
+    feature,
+    language_code: languageCode,
+    char_count_in: text.length,
+    success: true,
+  });
 
   return new Response(
     JSON.stringify({ audio: audioBase64, format: "wav" }),

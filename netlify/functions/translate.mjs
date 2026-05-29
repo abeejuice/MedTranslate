@@ -4,6 +4,22 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+function logEvent(event) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return;
+  fetch(`${url}/rest/v1/api_events`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(event),
+  }).catch(() => {});
+}
+
 const SARVAM_TRANSLATE_URL = "https://api.sarvam.ai/translate";
 const SARVAM_TRANSLITERATE_URL = "https://api.sarvam.ai/transliterate";
 
@@ -103,7 +119,7 @@ export default async function handler(req) {
     });
   }
 
-  const { questions, targetLang } = body;
+  const { questions, targetLang, skipRomanisation = false, feature = null, templateId = null } = body;
 
   if (!questions || !targetLang) {
     return new Response(
@@ -151,15 +167,16 @@ export default async function handler(req) {
     );
   }
 
-  let romanisedTexts;
-  try {
-    // Round 2: transliterate all native results to roman in parallel
-    romanisedTexts = await Promise.all(
-      nativeTexts.map((t) => transliterateToRoman(t, targetLang, apiKey))
-    );
-  } catch (err) {
-    // Transliteration failure is non-fatal — fall back to empty strings
-    romanisedTexts = nativeTexts.map(() => "");
+  let romanisedTexts = nativeTexts.map(() => "");
+  if (!skipRomanisation) {
+    try {
+      // Round 2: transliterate all native results to roman in parallel
+      romanisedTexts = await Promise.all(
+        nativeTexts.map((t) => transliterateToRoman(t, targetLang, apiKey))
+      );
+    } catch {
+      // Transliteration failure is non-fatal — keep empty strings
+    }
   }
 
   const translations = nativeTexts.map((text, i) => ({
@@ -167,6 +184,17 @@ export default async function handler(req) {
     native: text,           // Maps directly to c.updateTranslation(..., t.native) in session.js
     romanised: romanisedTexts[i] ?? "",
   }));
+
+  logEvent({
+    event_type: "translate",
+    feature,
+    language_code: targetLang,
+    template_id: templateId,
+    char_count_in: questions.reduce((s, q) => s + q.length, 0),
+    char_count_out: nativeTexts.reduce((s, t) => s + t.length, 0),
+    questions_count: questions.length,
+    success: true,
+  });
 
   return new Response(JSON.stringify({ translations }), {
     status: 200,

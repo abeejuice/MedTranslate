@@ -27,6 +27,11 @@ async function blobToBase64(blob) {
   });
 }
 
+function getBestMimeType() {
+  return ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', '']
+    .find(t => t === '' || MediaRecorder.isTypeSupported(t));
+}
+
 function makeOrbEl() {
   const wrapper = document.createElement('div');
   wrapper.className = 'orb-wrapper';
@@ -109,6 +114,12 @@ async function mountQuickOpd(el) {
     durationSeconds: 0,
     qaLog: [],
   };
+
+  fetch('/api/log-event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_type: 'session_start', feature: 'quick_opd', language_code: langCode || null }),
+  }).catch(() => {});
 
   // ── Header ────────────────────────────────────────────────────────────────
 
@@ -363,10 +374,12 @@ async function mountQuickOpd(el) {
     }
 
     const chunks = [];
-    mediaRecorder = new MediaRecorder(activeStream);
+    const bestMime = getBestMimeType();
+    mediaRecorder = new MediaRecorder(activeStream, bestMime ? { mimeType: bestMime } : {});
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
     mediaRecorder.onstop = async () => {
+      const recordingDurationMs = Date.now() - recordingStartMs;
       if (activeStream) { activeStream.getTracks().forEach(t => t.stop()); activeStream = null; }
 
       const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
@@ -378,12 +391,14 @@ async function mountQuickOpd(el) {
       let englishText;
       try {
         const audioBase64 = await blobToBase64(blob);
+        console.time('[OPD] STT');
         const res = await fetch('/api/stt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioBase64, languageCode: 'en', mimeType: blob.type }),
+          body: JSON.stringify({ audioBase64, languageCode: 'en', mimeType: blob.type, feature: 'quick_opd', recordingDurationMs }),
           signal,
         });
+        console.timeEnd('[OPD] STT');
         if (!res.ok) throw new Error('STT ' + res.status);
         const data = await res.json();
         englishText = (data.original || data.english || '').trim();
@@ -403,12 +418,14 @@ async function mountQuickOpd(el) {
       let romanised = '';
 
       try {
+        console.time('[OPD] Translate');
         const res = await fetch('/api/translate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ questions: [englishText], targetLang: langCode, targetLangLabel: langLabel }),
+          body: JSON.stringify({ questions: [englishText], targetLang: langCode, targetLangLabel: langLabel, skipRomanisation: true, feature: 'quick_opd' }),
           signal,
         });
+        console.timeEnd('[OPD] Translate');
         if (!res.ok) throw new Error('Translate ' + res.status);
         const data = await res.json();
         native = data.translations?.[0]?.native || '';
@@ -429,12 +446,14 @@ async function mountQuickOpd(el) {
       const ttsText = native || englishText;
 
       try {
+        console.time('[OPD] TTS');
         const res = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: ttsText, languageCode: sarvamCode }),
+          body: JSON.stringify({ text: ttsText, languageCode: sarvamCode, feature: 'quick_opd' }),
           signal,
         });
+        console.timeEnd('[OPD] TTS');
         if (!res.ok) throw new Error('TTS ' + res.status);
         const data = await res.json();
 
@@ -458,6 +477,7 @@ async function mountQuickOpd(el) {
       if (state !== 'idle') setState('idle');
     };
 
+    let recordingStartMs = Date.now();
     mediaRecorder.start();
     navigator.vibrate?.(20);
     setState('recording-doctor');
@@ -485,10 +505,12 @@ async function mountQuickOpd(el) {
     }
 
     const chunks = [];
-    mediaRecorder = new MediaRecorder(activeStream);
+    const bestMime = getBestMimeType();
+    mediaRecorder = new MediaRecorder(activeStream, bestMime ? { mimeType: bestMime } : {});
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
     mediaRecorder.onstop = async () => {
+      const recordingDurationMs = Date.now() - recordingStartMs;
       if (activeStream) { activeStream.getTracks().forEach(t => t.stop()); activeStream = null; }
 
       const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
@@ -498,12 +520,14 @@ async function mountQuickOpd(el) {
 
       try {
         const audioBase64 = await blobToBase64(blob);
+        console.time('[OPD] STT (patient)');
         const res = await fetch('/api/stt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioBase64, languageCode: langCode, mimeType: blob.type }),
+          body: JSON.stringify({ audioBase64, languageCode: langCode, mimeType: blob.type, feature: 'quick_opd', recordingDurationMs }),
           signal,
         });
+        console.timeEnd('[OPD] STT (patient)');
         if (!res.ok) throw new Error('STT ' + res.status);
         const data = await res.json();
 
@@ -520,6 +544,7 @@ async function mountQuickOpd(el) {
       }
     };
 
+    let recordingStartMs = Date.now();
     mediaRecorder.start();
     navigator.vibrate?.(20);
     setState('recording-patient');
@@ -536,6 +561,17 @@ async function mountQuickOpd(el) {
     session.durationSeconds = Math.round(
       (new Date(session.endedAt) - new Date(session.startedAt)) / 1000
     );
+    fetch('/api/log-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: 'session_end',
+        feature: 'quick_opd',
+        language_code: langCode || null,
+        session_duration_seconds: session.durationSeconds,
+        qa_count: session.qaLog.length,
+      }),
+    }).catch(() => {});
     await saveSession(session);
     navigate('home', {}, 'back');
   }

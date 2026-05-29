@@ -475,6 +475,11 @@ async function mountSession(el, params) {
 
   buildTemplateCards(null);
   saveSession(session).catch(err => console.error('saveSession:', err));
+  fetch('/api/log-event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_type: 'session_start', feature: 'session', language_code: languageCode, template_id: templateId }),
+  }).catch(() => {});
 
   // ── Translations ──────────────────────────────────────────────────────────
 
@@ -492,6 +497,8 @@ async function mountSession(el, params) {
           questions: template.questions.map(q => q.english),
           targetLang: langObj ? langObj.sarvamCode : langCode,
           targetLangLabel: langLabelArg,
+          feature: 'session',
+          templateId,
         }),
         signal,
       });
@@ -543,7 +550,7 @@ async function mountSession(el, params) {
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: q.native || q.english, languageCode: langObj ? langObj.sarvamCode : 'hi-IN' }),
+        body: JSON.stringify({ text: q.native || q.english, languageCode: langObj ? langObj.sarvamCode : 'hi-IN', feature: 'session' }),
         signal,
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -620,7 +627,7 @@ async function mountSession(el, params) {
         const res = await fetch('/api/stt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioBase64, languageCode, mimeType: blob.type }),
+          body: JSON.stringify({ audioBase64, languageCode, mimeType: blob.type, feature: 'session' }),
           signal,
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -674,7 +681,7 @@ async function mountSession(el, params) {
       const res = await fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions: [text], targetLang: languageCode, targetLangLabel: langLabelArg }),
+        body: JSON.stringify({ questions: [text], targetLang: languageCode, targetLangLabel: langLabelArg, feature: 'session', templateId }),
         signal,
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -722,6 +729,18 @@ async function mountSession(el, params) {
     session.durationSeconds = Math.round(
       (new Date(session.endedAt) - new Date(session.startedAt)) / 1000
     );
+    fetch('/api/log-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: 'session_end',
+        feature: 'session',
+        language_code: session.languageCode,
+        template_id: session.templateId,
+        session_duration_seconds: session.durationSeconds,
+        qa_count: session.qaLog.length,
+      }),
+    }).catch(() => {});
     await saveSession(session);
     navigate('session-summary', { sessionId: session.id }, 'up');
   }

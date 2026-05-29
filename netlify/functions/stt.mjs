@@ -6,17 +6,35 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+function logEvent(event) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return;
+  fetch(`${url}/rest/v1/api_events`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(event),
+  }).catch(() => {});
+}
+
 const SONIOX_BASE = "https://api.soniox.com/v1";
-const STT_MODEL = "stt-async-v3";
-const POLL_INTERVAL_MS = 1500;
-const MAX_POLLS = 15; // 15 × 1.5s = 22.5s max wait
+const STT_MODEL = "stt-async-v4";
+const POLL_INTERVAL_MS = 500;
+const MAX_POLLS = 40; // 40 × 500ms = 20s max wait
 
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
 async function uploadFile(audioBuffer, mimeType, apiKey) {
-  const ext = mimeType.includes("wav") ? "wav" : "webm";
+  const ext = mimeType.includes("wav") ? "wav"
+    : (mimeType.includes("mp4") || mimeType.includes("m4a")) ? "mp4"
+    : "webm";
   const filename = `audio.${ext}`;
   const boundary = "----SonioxUpload" + Date.now().toString(16);
 
@@ -150,7 +168,7 @@ export default async function handler(req) {
     });
   }
 
-  const { audioBase64, languageCode, mimeType = "audio/webm" } = body;
+  const { audioBase64, languageCode, mimeType = "audio/webm", feature = null, recordingDurationMs = null } = body;
 
   if (!audioBase64 || !languageCode) {
     return new Response(
@@ -182,11 +200,29 @@ export default async function handler(req) {
     // Step 4: fetch transcript
     const { original, english } = await getTranscript(transcriptionId, apiKey);
 
+    logEvent({
+      event_type: "stt",
+      feature,
+      language_code: languageCode,
+      audio_size_bytes: audioBuffer.length,
+      recording_duration_ms: recordingDurationMs,
+      success: true,
+    });
+
     return new Response(
       JSON.stringify({ english, original }),
       { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    logEvent({
+      event_type: "stt",
+      feature,
+      language_code: languageCode,
+      audio_size_bytes: audioBuffer.length,
+      recording_duration_ms: recordingDurationMs,
+      success: false,
+      error_message: err.message,
+    });
     return new Response(
       JSON.stringify({ error: "STT failed", details: err.message }),
       { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
