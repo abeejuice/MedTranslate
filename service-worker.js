@@ -1,19 +1,24 @@
-const CACHE_NAME = 'medtranslate-v15';
+const CACHE_NAME = 'medtranslate-v17';
 const STATIC_ASSETS = [
-  '/', '/index.html', '/styles/main.css', '/src/app.js',
+  '/styles/main.css', '/src/app.js',
   '/src/router.js', '/src/db.js', '/src/toast.js', '/src/utils.js',
   '/src/animations.js',
   '/src/data/templates.js',
   '/src/screens/home.js', '/src/screens/session-setup.js',
   '/src/screens/session.js', '/src/screens/session-summary.js',
-  '/src/screens/past-sessions.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  '/src/screens/past-sessions.js', '/src/screens/quick-opd.js',
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(STATIC_ASSETS)));
-  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.all(
+        STATIC_ASSETS.map(url =>
+          cache.add(url).catch(err => console.warn('[SW] Failed to cache:', url, err))
+        )
+      )
+    ).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('fetch', e => {
@@ -32,14 +37,28 @@ self.addEventListener('fetch', e => {
               cache.put(e.request, response.clone());
             }
             return response;
-          }).catch(() => cached || new Response('', { status: 503, statusText: 'Offline' }));
+          }).catch(() => new Response('', { status: 503, statusText: 'Offline' }));
         })
       )
+    );
+  } else if (url.endsWith('/') || url.includes('.html')) {
+    // Network-first for HTML — ensures CSP headers are always fresh
+    e.respondWith(
+      fetch(e.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            caches.open(CACHE_NAME).then(c => c.put(e.request, response.clone()));
+          }
+          return response;
+        })
+        .catch(() => caches.match(e.request))
     );
   } else {
     // Cache-first for all other static assets
     e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request))
+      caches.match(e.request).then(cached =>
+        cached || fetch(e.request).catch(() => new Response('', { status: 404 }))
+      )
     );
   }
 });
