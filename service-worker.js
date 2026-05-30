@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medtranslate-v18';
+const CACHE_NAME = 'medtranslate-v19';
 const STATIC_ASSETS = [
   '/styles/main.css', '/src/app.js',
   '/src/router.js', '/src/db.js', '/src/toast.js', '/src/utils.js',
