@@ -210,6 +210,25 @@ Play (▶), Record (●), and Stop (■) Unicode characters rendered at wildly d
 **Noto Sans re-fetched on every session start.**
 The Google Fonts stylesheet and woff2 files were fetched from the network on each page load. In areas with poor connectivity (hospital basements, rural settings) this caused a flash of unstyled text or broken Devanagari rendering mid-consultation. Fixed by adding a cache-first strategy in the service worker's fetch handler for `fonts.googleapis.com` and `fonts.gstatic.com`. Runtime caching (not `addAll`) was required because Google Fonts responses are CORS-opaque — `addAll` in the SW install handler fails on these URLs.
 
+## Design Refinements
+
+### OPD Ring — LED sweep smoothness (May 2026)
+
+**Problem:** The spinning LED sweep on the OPD ring button used a narrow conic gradient (~45° arc) that jumped abruptly from orange to full-opacity warm gold (`rgba(255,210,120,1)`) over just 10°. At animation speed this read as a harsh flicker rather than a smooth light sweep across a polished surface.
+
+**Fix:** Redesigned the `::after` conic gradient in `.btn-opd-ring::after`:
+- Arc widened to ~68° with 9 gradient stops instead of 5
+- Gradual ramp: feather-in from transparent → warm orange bloom → golden bridge → **silver-white metallic peak** (`rgba(255,245,210,1)` at 349°) → golden falloff → soft orange tail → feather-out
+- Peak shifted from warm gold to near-white (with slight warmth to stay within the Warm Ember palette) — real polished metal reflects cool, bright light at the specular peak, not saturated colour
+
+The result reads as a light sweep rather than a travelling bright dot.
+
+### OPD Ring — always-on ambient outer glow (May 2026)
+
+**Problem:** The ring had no outer glow at idle — it only emitted an orange halo on hover (`0 0 20px rgba(249,115,22,0.2)`). At rest the ring looked like an inert button; there was no visual signal that it represents an always-active live OPD session entry point.
+
+**Fix:** Added `0 0 16px rgba(249,115,22,0.12)` to the base `box-shadow` of `.btn-opd-ring`. This is intentionally subtle (0.12 opacity vs 0.2 on hover) so the `box-shadow 0.3s ease` transition reads as a natural brightening rather than a binary on/off. The ring now glows softly at rest like a live LED strip, and the glow intensifies on hover.
+
 ---
 
 ## Local Development

@@ -1140,6 +1140,7 @@ html, body {
   box-shadow:
     0 16px 48px rgba(0, 0, 0, 0.85),
     0 4px 12px  rgba(0, 0, 0, 0.6),
+    0 0 16px    rgba(249, 115, 22, 0.12),
     inset 0 1px 0    rgba(255, 255, 255, 0.10),
     inset 0 -2px 5px rgba(0, 0, 0, 0.6);
   padding: 18px;
@@ -1175,13 +1176,16 @@ html, body {
   inset: 0;
   border-radius: 50%;
   background: conic-gradient(
-    transparent              0deg,
-    transparent            315deg,
-    rgba(249,115,22,0.05)  325deg,
-    rgba(249,115,22,0.55)  342deg,
-    rgba(255,210,120,1)    352deg,
-    rgba(249,115,22,0.35)  357deg,
-    transparent            360deg
+    transparent               0deg,
+    transparent             292deg,
+    rgba(249,115,22,0.04)   302deg,
+    rgba(249,115,22,0.18)   314deg,
+    rgba(249,115,22,0.45)   330deg,
+    rgba(255,185,70,0.88)   341deg,
+    rgba(255,245,210,1)     349deg,
+    rgba(255,185,70,0.72)   355deg,
+    rgba(249,115,22,0.12)   359deg,
+    transparent             360deg
   );
   animation: opd-led-spin 3s linear infinite;
   pointer-events: none;
