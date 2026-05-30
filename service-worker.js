@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medtranslate-v17';
+const CACHE_NAME = 'medtranslate-v18';
 const STATIC_ASSETS = [
   '/styles/main.css', '/src/app.js',
   '/src/router.js', '/src/db.js', '/src/toast.js', '/src/utils.js',
@@ -7,6 +7,7 @@ const STATIC_ASSETS = [
   '/src/screens/home.js', '/src/screens/session-setup.js',
   '/src/screens/session.js', '/src/screens/session-summary.js',
   '/src/screens/past-sessions.js', '/src/screens/quick-opd.js',
+  '/icons/GalenAI-FInal Logo-01.svg',
 ];
 
 self.addEventListener('install', e => {

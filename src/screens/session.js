@@ -297,9 +297,23 @@ async function mountSession(el, params) {
   endBtn.className = 'app-header__action';
   endBtn.textContent = 'End';
 
+  const galenLogo = document.createElement('a');
+  galenLogo.className = 'app-header__logo';
+  galenLogo.href = 'https://app.galenai.io/';
+  galenLogo.target = '_blank';
+  galenLogo.rel = 'noopener noreferrer';
+  galenLogo.setAttribute('aria-label', 'GalenAI');
+  const galenImg = document.createElement('img');
+  galenImg.src = '/icons/GalenAI-FInal Logo-01.svg';
+  galenImg.alt = 'GalenAI';
+  galenImg.width = 32;
+  galenImg.height = 32;
+  galenLogo.appendChild(galenImg);
+
   header.appendChild(backBtn);
   header.appendChild(headerTitle);
   header.appendChild(endBtn);
+  header.appendChild(galenLogo);
 
   // ── Content ───────────────────────────────────────────────────────────────
 

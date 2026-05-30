@@ -144,11 +144,77 @@ async function mountHome(el, params, navigateFn) {
   dot.className = 'pulse-dot';
   headerTitle.appendChild(dot);
 
+  const galenLogo = document.createElement('a');
+  galenLogo.className = 'app-header__logo';
+  galenLogo.href = 'https://app.galenai.io/';
+  galenLogo.target = '_blank';
+  galenLogo.rel = 'noopener noreferrer';
+  galenLogo.setAttribute('aria-label', 'GalenAI');
+  const galenImg = document.createElement('img');
+  galenImg.src = '/icons/GalenAI-FInal Logo-01.svg';
+  galenImg.alt = 'GalenAI';
+  galenImg.width = 32;
+  galenImg.height = 32;
+  galenLogo.appendChild(galenImg);
+
+  const installBtn = document.createElement('button');
+  installBtn.className = 'app-header__install';
+  installBtn.setAttribute('aria-label', 'Install app');
+  const installIcon = document.createElement('i');
+  installIcon.className = 'fa-solid fa-download';
+  installBtn.appendChild(installIcon);
+  installBtn.style.display = 'none';
+  installBtn.addEventListener('click', async () => {
+    if (!window._installPromptEvent) return;
+    window._installPromptEvent.prompt();
+    const { outcome } = await window._installPromptEvent.userChoice;
+    if (outcome === 'accepted') installBtn.style.display = 'none';
+    window._installPromptEvent = null;
+  });
+  document.addEventListener('installprompt:ready', () => { installBtn.style.display = ''; });
+  if (window._installPromptEvent) installBtn.style.display = '';
+
   header.appendChild(headerTitle);
+  header.appendChild(galenLogo);
+  header.appendChild(installBtn);
 
   // ── Content ───────────────────────────────────────────────
   const content = document.createElement('div');
   content.className = 'screen-content';
+
+  // iOS install nudge banner
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = ('standalone' in navigator) && navigator.standalone;
+  const iosDismissed = localStorage.getItem('galenInstallDismissed');
+  if (isIos && !isInStandalone && !iosDismissed) {
+    const banner = document.createElement('div');
+    banner.className = 'ios-install-banner';
+
+    const bannerText = document.createElement('span');
+    bannerText.className = 'ios-install-banner__text';
+    bannerText.textContent = 'Install this app: tap ';
+    const shareIcon = document.createElement('i');
+    shareIcon.className = 'fa-solid fa-arrow-up-from-bracket';
+    const bannerText2 = document.createTextNode(' then ');
+    const strong = document.createElement('strong');
+    strong.textContent = 'Add to Home Screen';
+    bannerText.appendChild(shareIcon);
+    bannerText.appendChild(bannerText2);
+    bannerText.appendChild(strong);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'ios-install-banner__close';
+    closeBtn.setAttribute('aria-label', 'Dismiss');
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => {
+      localStorage.setItem('galenInstallDismissed', '1');
+      banner.remove();
+    });
+
+    banner.appendChild(bannerText);
+    banner.appendChild(closeBtn);
+    content.appendChild(banner);
+  }
 
   // Hero
   const hero = document.createElement('div');

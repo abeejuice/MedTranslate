@@ -1476,3 +1476,58 @@ html, body {
   margin-top: var(--space-1);
   letter-spacing: 0.3px;
 }
+
+/* ── GalenAI logo in header ───────────────────────────────────────────────── */
+.app-header__logo {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+  text-decoration: none;
+}
+.app-header__logo:hover { opacity: 1; }
+.app-header__logo img { display: block; width: 32px; height: 32px; }
+
+/* ── Install button in header ─────────────────────────────────────────────── */
+.app-header__install {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(249, 115, 22, 0.12);
+  color: var(--color-primary);
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: var(--space-2);
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+.app-header__install:hover { background: rgba(249, 115, 22, 0.22); }
+
+/* ── iOS install nudge banner ─────────────────────────────────────────────── */
+.ios-install-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: rgba(249, 115, 22, 0.08);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.18);
+  font-size: 13px;
+  color: var(--color-text-2);
+}
+.ios-install-banner__text { flex: 1; line-height: 1.4; }
+.ios-install-banner__close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-2);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}

@@ -12,6 +12,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  window._installPromptEvent = e;
+  document.dispatchEvent(new Event('installprompt:ready'));
+});
+
 registerHome();
 registerSessionSetup();
 registerSession();
