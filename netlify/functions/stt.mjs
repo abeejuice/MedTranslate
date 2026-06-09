@@ -168,7 +168,8 @@ export default async function handler(req) {
     });
   }
 
-  const { audioBase64, languageCode, mimeType = "audio/webm", feature = null, recordingDurationMs = null } = body;
+  const { audioBase64, languageCode, mimeType: rawMimeType = "audio/webm", feature = null, recordingDurationMs = null } = body;
+  const mimeType = rawMimeType || "audio/webm";
 
   if (!audioBase64 || !languageCode) {
     return new Response(
@@ -214,6 +215,7 @@ export default async function handler(req) {
       { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error('[STT] failed:', err.message);
     logEvent({
       event_type: "stt",
       feature,

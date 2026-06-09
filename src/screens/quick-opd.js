@@ -409,7 +409,7 @@ async function mountQuickOpd(el) {
         const res = await fetch('/api/stt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioBase64, languageCode: 'en', mimeType: blob.type, feature: 'quick_opd', recordingDurationMs }),
+          body: JSON.stringify({ audioBase64, languageCode: 'en', mimeType: blob.type || bestMime || 'audio/webm', feature: 'quick_opd', recordingDurationMs }),
           signal,
         });
         console.timeEnd('[OPD] STT');
@@ -492,7 +492,7 @@ async function mountQuickOpd(el) {
     };
 
     let recordingStartMs = Date.now();
-    mediaRecorder.start();
+    mediaRecorder.start(500);
     navigator.vibrate?.(20);
     setState('recording-doctor');
   });
@@ -538,7 +538,7 @@ async function mountQuickOpd(el) {
         const res = await fetch('/api/stt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioBase64, languageCode: langCode, mimeType: blob.type, feature: 'quick_opd', recordingDurationMs }),
+          body: JSON.stringify({ audioBase64, languageCode: langCode, mimeType: blob.type || bestMime || 'audio/webm', feature: 'quick_opd', recordingDurationMs }),
           signal,
         });
         console.timeEnd('[OPD] STT (patient)');
@@ -559,7 +559,7 @@ async function mountQuickOpd(el) {
     };
 
     let recordingStartMs = Date.now();
-    mediaRecorder.start();
+    mediaRecorder.start(500);
     navigator.vibrate?.(20);
     setState('recording-patient');
   });
