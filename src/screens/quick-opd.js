@@ -32,6 +32,34 @@ function getBestMimeType() {
     .find(t => t === '' || MediaRecorder.isTypeSupported(t));
 }
 
+function encodeWav(samples, sampleRate) {
+  const total = samples.reduce((n, s) => n + s.length, 0);
+  const buf = new ArrayBuffer(44 + total * 2);
+  const v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + total * 2, true);
+  w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  w(36, 'data'); v.setUint32(40, total * 2, true);
+  let off = 44;
+  for (const s of samples) {
+    for (const x of s) { v.setInt16(off, Math.max(-1, Math.min(1, x)) * 0x7FFF, true); off += 2; }
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+function startWavRecorder(stream) {
+  const ctx = new AudioContext();
+  const src = ctx.createMediaStreamSource(stream);
+  const proc = ctx.createScriptProcessor(4096, 1, 1);
+  const samples = [];
+  proc.onaudioprocess = e => samples.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  src.connect(proc); proc.connect(ctx.destination);
+  return { stop() { proc.disconnect(); src.disconnect(); ctx.close(); return encodeWav(samples, ctx.sampleRate); } };
+}
+
 function makeOrbEl() {
   const wrapper = document.createElement('div');
   wrapper.className = 'orb-wrapper';
@@ -387,16 +415,14 @@ async function mountQuickOpd(el) {
       return;
     }
 
-    const chunks = [];
     const bestMime = getBestMimeType();
-    mediaRecorder = new MediaRecorder(activeStream, bestMime ? { mimeType: bestMime } : {});
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    const useWav = !MediaRecorder.isTypeSupported('audio/webm');
+    const recordingStartMs = Date.now();
 
-    mediaRecorder.onstop = async () => {
+    async function handleDoctorBlob(blob) {
       const recordingDurationMs = Date.now() - recordingStartMs;
       if (activeStream) { activeStream.getTracks().forEach(t => t.stop()); activeStream = null; }
 
-      const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
       if (blob.size < 1000) { setState('idle'); return; }
 
       setState('processing');
@@ -489,10 +515,23 @@ async function mountQuickOpd(el) {
 
       activeAudio = null;
       if (state !== 'idle') setState('idle');
-    };
+    }
 
-    let recordingStartMs = Date.now();
-    mediaRecorder.start();
+    if (useWav) {
+      const wavRec = startWavRecorder(activeStream);
+      mediaRecorder = {
+        state: 'recording',
+        mimeType: 'audio/wav',
+        stop() { this.state = 'inactive'; handleDoctorBlob(wavRec.stop()); },
+      };
+    } else {
+      const chunks = [];
+      mediaRecorder = new MediaRecorder(activeStream, bestMime ? { mimeType: bestMime } : {});
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      mediaRecorder.onstop = () => handleDoctorBlob(new Blob(chunks, { type: mediaRecorder.mimeType }));
+      mediaRecorder.start();
+    }
+
     navigator.vibrate?.(20);
     setState('recording-doctor');
   });
@@ -518,16 +557,14 @@ async function mountQuickOpd(el) {
       return;
     }
 
-    const chunks = [];
     const bestMime = getBestMimeType();
-    mediaRecorder = new MediaRecorder(activeStream, bestMime ? { mimeType: bestMime } : {});
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    const useWav = !MediaRecorder.isTypeSupported('audio/webm');
+    const recordingStartMs = Date.now();
 
-    mediaRecorder.onstop = async () => {
+    async function handlePatientBlob(blob) {
       const recordingDurationMs = Date.now() - recordingStartMs;
       if (activeStream) { activeStream.getTracks().forEach(t => t.stop()); activeStream = null; }
 
-      const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
       if (blob.size < 1000) { setState('idle'); return; }
 
       setState('processing');
@@ -556,10 +593,23 @@ async function mountQuickOpd(el) {
         if (err.name !== 'AbortError') showToast("Could not transcribe patient's reply", 'error');
         setState('idle');
       }
-    };
+    }
 
-    let recordingStartMs = Date.now();
-    mediaRecorder.start();
+    if (useWav) {
+      const wavRec = startWavRecorder(activeStream);
+      mediaRecorder = {
+        state: 'recording',
+        mimeType: 'audio/wav',
+        stop() { this.state = 'inactive'; handlePatientBlob(wavRec.stop()); },
+      };
+    } else {
+      const chunks = [];
+      mediaRecorder = new MediaRecorder(activeStream, bestMime ? { mimeType: bestMime } : {});
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      mediaRecorder.onstop = () => handlePatientBlob(new Blob(chunks, { type: mediaRecorder.mimeType }));
+      mediaRecorder.start();
+    }
+
     navigator.vibrate?.(20);
     setState('recording-patient');
   });
