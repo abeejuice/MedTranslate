@@ -492,7 +492,7 @@ async function mountQuickOpd(el) {
     };
 
     let recordingStartMs = Date.now();
-    mediaRecorder.start(500);
+    mediaRecorder.start();
     navigator.vibrate?.(20);
     setState('recording-doctor');
   });
@@ -559,7 +559,7 @@ async function mountQuickOpd(el) {
     };
 
     let recordingStartMs = Date.now();
-    mediaRecorder.start(500);
+    mediaRecorder.start();
     navigator.vibrate?.(20);
     setState('recording-patient');
   });
